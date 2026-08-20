@@ -1,0 +1,1438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transplant Coordinator Tracker — NNUH Kidney Transplant Program</title>
+<meta name="description" content="Interactive donor and recipient checklist and follow-up tracker for the An-Najah National University Hospital Kidney Transplant Program.">
+<style>
+:root{
+  --navy:#1f3864; --blue:#2e5c8a; --light:#eaf0f7; --band:#f5f8fc;
+  --ink:#16202e; --muted:#5c6b7f; --line:#d6dfea; --bg:#f2f5f9; --card:#fff;
+  --ok:#1e7a44; --ok-bg:#e4f4ea; --warn:#8a5a00; --warn-bg:#fdf1d8;
+  --bad:#a32020; --bad-bg:#fbe6e4; --na:#6b7684; --na-bg:#eceff3;
+  --radius:10px; --shadow:0 1px 2px rgba(20,35,60,.06),0 2px 8px rgba(20,35,60,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color:var(--ink); background:var(--bg); -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;cursor:pointer}
+input{font:inherit;color:inherit}
+
+/* ---------- app bar ---------- */
+.appbar{position:sticky;top:0;z-index:60;background:var(--navy);color:#fff;box-shadow:0 1px 0 rgba(0,0,0,.15)}
+.appbar-in{max-width:1240px;margin:0 auto;padding:12px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.25;margin-right:auto}
+.brand strong{font-size:16px;font-weight:650}
+.brand span{font-size:12px;color:#b9c8de}
+.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{
+  border:1px solid transparent;border-radius:8px;padding:7px 13px;font-size:13.5px;font-weight:550;
+  background:#fff;color:var(--navy);transition:background .12s,border-color .12s,transform .06s;
+}
+.btn:hover{background:#eef3fa}
+.btn:active{transform:translateY(1px)}
+.btn-ghost{background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.32)}
+.btn-ghost:hover{background:rgba(255,255,255,.2)}
+.savestate{font-size:12px;padding:4px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.savestate.saved{background:rgba(255,255,255,.14);color:#cfe3d4}
+.savestate.unsaved{background:#ffd8a8;color:#7a4a00}
+
+.chips{max-width:1240px;margin:0 auto;padding:0 20px 10px;display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:flex;gap:7px;align-items:baseline;background:rgba(255,255,255,.12);
+  border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:3px 12px;font-size:12.5px;color:#e6eef8}
+.chip strong{font-size:13.5px}
+.chip.ok strong{color:#a8e6bf}.chip.warn strong{color:#ffd89a}.chip.bad strong{color:#ffb3ac}
+.chip-l{color:#b9c8de}
+
+/* ---------- tabs ---------- */
+.tabs{background:var(--blue);position:sticky;top:0;z-index:55}
+.tabs-in{max-width:1240px;margin:0 auto;padding:0 12px;display:flex;gap:2px;overflow-x:auto}
+.tab{background:none;border:0;color:#d8e5f3;padding:11px 15px;font-size:13.5px;font-weight:550;
+  border-bottom:3px solid transparent;white-space:nowrap}
+.tab:hover{color:#fff;background:rgba(255,255,255,.07)}
+.tab.active{color:#fff;border-bottom-color:#fff;background:rgba(255,255,255,.1)}
+
+/* ---------- layout ---------- */
+main{max-width:1240px;margin:0 auto;padding:20px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
+.card h2{font-size:17px;color:var(--navy)}
+.card .sub{font-size:13px;color:var(--muted);margin-top:3px}
+.sticky-head{position:sticky;top:44px;z-index:40}
+.group{padding:0;overflow:hidden}
+.group-title{font-size:13px;font-weight:650;color:#fff;background:var(--blue);padding:9px 16px;letter-spacing:.01em}
+
+/* ---------- forms ---------- */
+.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>span{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.field input{border:1px solid var(--line);border-radius:7px;padding:7px 9px;background:#fff;min-width:0}
+.field input:focus{outline:2px solid var(--blue);outline-offset:-1px;border-color:var(--blue)}
+.field.small>span{font-size:10.5px}
+.field.small input{padding:5px 8px;font-size:13px}
+.field.grow{flex:1 1 200px}
+.warn-input{border-color:#e0a63c!important;background:#fffaf0}
+
+.toolbar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-top:14px}
+.search{flex:1 1 240px;border:1px solid var(--line);border-radius:7px;padding:7px 11px}
+.search:focus{outline:2px solid var(--blue);outline-offset:-1px}
+.segmented{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+.seg-btn{border:0;background:#fff;padding:7px 13px;font-size:13px;color:var(--muted);border-right:1px solid var(--line)}
+.seg-btn:last-child{border-right:0}
+.seg-btn.on{background:var(--navy);color:#fff;font-weight:600}
+.seg-btn:hover:not(.on){background:var(--light)}
+
+/* ---------- progress ---------- */
+.big-pct{font-size:38px;font-weight:700;color:var(--navy);line-height:1.1;margin:10px 0 6px}
+.bar{display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--na-bg);margin:10px 0}
+.seg{height:100%}
+.seg-complete{background:var(--ok)}
+.seg-pending{background:#e0a63c}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.stat{display:flex;flex-direction:column;background:var(--band);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat strong{font-size:19px;line-height:1.1}
+.stat span{font-size:11px;color:var(--muted);margin-top:2px}
+.inline-stats{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px;align-items:center}
+.inline-stats strong{color:var(--ink);font-size:14px}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.muted{color:var(--na)}
+.ready{border-radius:8px;padding:9px 12px;font-weight:650;font-size:13.5px;text-align:center;margin-bottom:12px}
+.ready-yes{background:var(--ok-bg);color:var(--ok)}
+.ready-no{background:var(--bad-bg);color:var(--bad)}
+.ready-inline{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700}
+.ready-inline.ready-yes{background:var(--ok-bg);color:var(--ok)}
+.ready-inline.ready-no{background:var(--bad-bg);color:var(--bad)}
+.btn-quiet{border-color:var(--line);width:100%;color:var(--blue)}
+
+/* ---------- items ---------- */
+.item{display:grid;grid-template-columns:1fr auto;gap:10px 16px;padding:12px 16px;border-top:1px solid var(--line);align-items:start}
+.group .item:first-of-type{border-top:0}
+.item.s-complete{background:linear-gradient(90deg,var(--ok-bg) 0 3px,#fff 3px)}
+.item.s-pending{background:linear-gradient(90deg,#e0a63c 0 3px,#fff 3px)}
+.item.s-todo{background:linear-gradient(90deg,var(--bad) 0 3px,#fff 3px)}
+.item.s-na{background:linear-gradient(90deg,var(--na) 0 3px,#fafbfc 3px);opacity:.72}
+.item.v-attended{background:linear-gradient(90deg,var(--ok) 0 3px,#fff 3px)}
+.item.v-overdue{background:linear-gradient(90deg,var(--bad) 0 3px,#fff 3px)}
+.item.v-due{background:linear-gradient(90deg,#e0a63c 0 3px,#fff 3px)}
+.item.v-scheduled,.item.v-unset{background:#fff}
+.item.is-gate .item-title{font-weight:650;color:var(--navy)}
+.item-main{min-width:0}
+.item-title{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:14px}
+.item-meta{display:flex;gap:10px;align-items:center;margin-top:5px;flex-wrap:wrap}
+.item-ctl{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end}
+.item-extra{grid-column:1/-1;display:flex;gap:10px;flex-wrap:wrap}
+.dates{display:flex;gap:8px}
+.tests{font-size:12.5px;color:var(--muted);margin-top:6px;max-width:70ch}
+.ref{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;background:var(--band);
+  border:1px solid var(--line);border-radius:4px;padding:1px 6px}
+.due{font-size:12px;color:var(--muted)}
+.gate-pill{background:var(--navy);color:#fff;font-size:10px;font-weight:700;letter-spacing:.06em;
+  border-radius:4px;padding:2px 6px}
+.na{display:flex;gap:5px;align-items:center;font-size:12.5px;color:var(--muted);padding-bottom:6px;white-space:nowrap}
+.na input{width:15px;height:15px}
+.btn-tick{border-color:var(--line);background:#fff;color:var(--ok);min-width:118px}
+.btn-tick.on{background:var(--ok);border-color:var(--ok);color:#fff}
+
+.badge{font-size:11px;font-weight:650;border-radius:20px;padding:2px 9px;white-space:nowrap}
+.b-complete,.b-attended{background:var(--ok-bg);color:var(--ok)}
+.b-pending,.b-due{background:var(--warn-bg);color:var(--warn)}
+.b-todo,.b-overdue{background:var(--bad-bg);color:var(--bad)}
+.b-na,.b-scheduled,.b-unset{background:var(--na-bg);color:var(--na)}
+
+/* ---------- misc ---------- */
+.gate-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+.gate-list li{display:flex;gap:9px;align-items:baseline;font-size:13.5px;padding:8px 11px;
+  background:var(--bad-bg);border-radius:7px}
+.tag{font-size:10.5px;font-weight:700;border-radius:4px;padding:2px 7px;white-space:nowrap}
+.tag-d{background:#dbe7f6;color:#1b4a80}
+.tag-r{background:#e6e0f5;color:#4a327d}
+.ok-note{margin-top:12px;background:var(--ok-bg);color:var(--ok);padding:10px 12px;border-radius:8px;font-weight:600;font-size:13.5px}
+.muted-note{margin-top:12px;color:var(--muted);font-size:13.5px}
+table.grid{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+table.grid th{text-align:left;background:var(--band);color:var(--muted);font-size:11.5px;
+  text-transform:uppercase;letter-spacing:.04em;padding:7px 10px;border-bottom:1px solid var(--line)}
+table.grid td{padding:8px 10px;border-bottom:1px solid var(--line)}
+dl.help{margin:14px 0 0}
+dl.help dt{font-weight:650;color:var(--navy);font-size:13.5px;margin-top:14px}
+dl.help dd{margin:4px 0 0;color:var(--ink);font-size:13.5px;max-width:80ch}
+.keygrid{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,14px);background:var(--navy);color:#fff;
+  padding:11px 18px;border-radius:9px;font-size:13.5px;opacity:0;transition:.25s;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.22)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:var(--bad)}
+
+/* ---------- registry / cloud ---------- */
+.cloud-pill{font-size:12px;padding:4px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.cloud-pill.on{background:rgba(255,255,255,.14);color:#cfe3d4}
+.cloud-pill.off{background:#ffd8a8;color:#7a4a00}
+.cloud-pill.busy{background:rgba(255,255,255,.14);color:#e6eef8}
+.reg-hero{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;border-radius:var(--radius);
+  padding:24px 26px;box-shadow:var(--shadow)}
+.reg-hero h2{color:#fff;font-size:20px}
+.reg-hero p{color:#dbe6f4;margin-top:5px;font-size:13.5px;max-width:70ch}
+.case-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.case-row{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center;
+  background:#fff;border:1px solid var(--line);border-radius:9px;padding:12px 14px;cursor:pointer;transition:border-color .12s,box-shadow .12s}
+.case-row:hover{border-color:var(--blue);box-shadow:0 2px 10px rgba(30,60,100,.08)}
+.case-row .who{display:flex;flex-direction:column;gap:2px}
+.case-row .who b{font-size:14px;color:var(--ink)}
+.case-row .who span{font-size:12px;color:var(--muted)}
+.case-row .mrns{font-size:12px;color:var(--muted);text-align:right}
+.case-row .upd{font-size:11px;color:var(--na);white-space:nowrap}
+.empty-state{padding:20px;text-align:center;color:var(--muted);font-size:13.5px}
+.patient-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.patient-head h2{font-size:19px}
+.sheet-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.sheet-tile{border:1px solid var(--line);background:#fff;border-radius:9px;padding:14px 14px;text-align:left}
+.sheet-tile:hover{border-color:var(--blue);background:var(--light)}
+.sheet-tile b{display:block;font-size:14px;color:var(--navy);margin-bottom:4px}
+.sheet-tile span{font-size:12px;color:var(--muted)}
+.sheet-tile .pct{float:right;font-weight:700;color:var(--navy)}
+@media(max-width:900px){.sheet-tiles{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.sheet-tiles{grid-template-columns:1fr}}
+
+/* ---------- modal ---------- */
+.modal-back{position:fixed;inset:0;background:rgba(15,25,40,.5);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:22px 24px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.modal h2{font-size:17px;color:var(--navy)}
+.modal .sub{font-size:12.5px;color:var(--muted);margin-top:4px}
+.modal .form-grid{grid-template-columns:1fr}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.pending-toggle{border:1px solid var(--line);background:#fff;color:var(--warn);border-radius:7px;padding:6px 10px;font-size:12.5px;font-weight:600;min-width:96px}
+.pending-toggle.on{background:var(--warn-bg);border-color:#e0a63c}
+.reminder-preview{background:var(--band);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12.5px;max-height:220px;overflow:auto;white-space:pre-wrap}
+
+@media(max-width:900px){
+  .two-col{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr 1fr}
+  .item{grid-template-columns:1fr}
+  .item-ctl{justify-content:flex-start}
+  .sticky-head{position:static}
+}
+@media(max-width:560px){.form-grid{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+
+/* ---------- print ---------- */
+@media print{
+  body{background:#fff}
+  .appbar,.tabs,.toolbar,.btn,.na input,.toast,.chips{display:none!important}
+  main{max-width:none;padding:0}
+  .card{border:0;box-shadow:none;padding:0 0 10px;break-inside:auto}
+  .sticky-head{position:static}
+  .item{break-inside:avoid;padding:6px 0;border-top:1px solid #ccc}
+  .group-title{background:#eee!important;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .badge,.ready,.chip{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .field input{border:0;border-bottom:1px solid #999;border-radius:0}
+  #printAll{display:block!important}
+}
+
+</style>
+</head>
+<body>
+<header class="appbar">
+  <div class="appbar-in">
+    <div class="brand">
+      <strong>Transplant Coordinator Tracker</strong>
+      <span>An-Najah National University Hospital &middot; Kidney Transplant Program &middot; Manual v2.1</span>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="btnHome">&#8962; Registry</button>
+      <span id="saveState" class="cloud-pill off">Cloud not configured</span>
+      <button class="btn" id="btnCloudSave">Save to cloud</button>
+      <button class="btn btn-ghost" id="btnExportSheet">Export to Google Sheet</button>
+      <button class="btn btn-ghost" id="btnRemind">Email reminder</button>
+      <button class="btn btn-ghost" id="btnCsv">Export CSV</button>
+      <button class="btn btn-ghost" id="btnPrint">Print</button>
+      <button class="btn btn-ghost" id="btnSettings">Settings</button>
+      <input type="file" id="fileInput" accept="application/json,.json" hidden>
+    </div>
+  </div>
+  <div class="chips" id="headerChips"></div>
+</header>
+
+<nav class="tabs">
+  <div class="tabs-in">
+      <button class="tab" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="donor">Donor checklist</button>
+      <button class="tab" data-tab="recipient">Recipient checklist</button>
+      <button class="tab" data-tab="rfu">Recipient follow-up</button>
+      <button class="tab" data-tab="dfu">Donor follow-up</button>
+      <button class="tab" data-tab="help">How to use</button>
+  </div>
+</nav>
+
+<main id="app"></main>
+<div id="modalRoot"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+window.__DATA__ = {"donor":[{"group":"A. Referral, Eligibility and Legal Screening"},{"key":"d1","ref":"G1.2","text":"Donor is an adult (≥ 18 years) and mental capacity confirmed","gate":false},{"key":"d2","ref":"G1.2","text":"Relationship to recipient documented (relative to 4th degree) with supporting documents","gate":false},{"key":"d3","ref":"G1.5","text":"Government-issued identification copy on file (donor and recipient)","gate":false},{"key":"d4","ref":"G1.2","text":"Voluntariness confirmed — no payment, brokerage or inducement","gate":false},{"key":"d5","ref":"G2.2","text":"Initial medical history taken (chronic illness, medicines, surgery, obstetric, family history)","gate":false},{"key":"d6","ref":"G2.2","text":"Physical examination completed including BMI","gate":false},{"key":"d7","ref":"G2.2","text":"Blood pressure recorded on at least two separate occasions","gate":false},{"key":"d8","ref":"G2.2","text":"Screening contraindications excluded (diabetes, uncontrolled HTN, kidney disease, malignancy, psychiatric illness)","gate":false},{"group":"B. Laboratory Investigations (§G2.3)"},{"key":"d9","ref":"G2.3","text":"Complete blood count","gate":false},{"key":"d10","ref":"G2.3","text":"Serum creatinine and eGFR — must exceed 90 mL/min/1.73 m²","gate":false},{"key":"d11","ref":"G2.3","text":"Measured GFR or 24-hour creatinine clearance (only if eGFR borderline)","gate":false},{"key":"d12","ref":"G2.3","text":"Liver function tests — AST, ALT, ALP, bilirubin, albumin","gate":false},{"key":"d13","ref":"G2.3","text":"Urinalysis","gate":false},{"key":"d14","ref":"G2.3","text":"Urine culture","gate":false},{"key":"d15","ref":"G2.3","text":"24-hour urine protein — must be < 300 mg/24 h","gate":false},{"key":"d16","ref":"G2.3","text":"Fasting blood glucose","gate":false},{"key":"d17","ref":"G2.3","text":"HbA1c","gate":false},{"key":"d18","ref":"G2.3","text":"Oral glucose tolerance test (only if impaired fasting glucose or strong family history)","gate":false},{"key":"d19","ref":"G2.3","text":"Lipid profile","gate":false},{"key":"d20","ref":"G2.3","text":"Uric acid, calcium and phosphate","gate":false},{"key":"d21","ref":"G2.3","text":"Coagulation screen","gate":false},{"key":"d22","ref":"G2.3","text":"ABO blood group and Rh typing","gate":false},{"key":"d23","ref":"G2.3","text":"HIV serology","gate":false},{"key":"d24","ref":"G2.3","text":"HBsAg and anti-HBc","gate":false},{"key":"d25","ref":"G2.3","text":"Anti-HCV","gate":false},{"key":"d26","ref":"G2.3","text":"CMV IgG  — required to set the recipient's CMV strategy (§G7.4)","gate":false},{"key":"d27","ref":"G2.3","text":"EBV IgG  — required to set EBV surveillance (§G8.3)","gate":false},{"key":"d28","ref":"G2.3","text":"Syphilis serology","gate":false},{"key":"d29","ref":"G2.3","text":"Tuberculosis screening by IGRA","gate":false},{"key":"d30","ref":"G2.3","text":"HLA typing — Class I and II","gate":false},{"key":"d31","ref":"G2.3","text":"Crossmatch — complement-dependent cytotoxicity","gate":false},{"key":"d32","ref":"G2.3","text":"Crossmatch — flow cytometry","gate":false},{"key":"d33","ref":"G2.3","text":"Pregnancy test — women of childbearing potential, within 7 days of surgery","gate":false},{"group":"C. Radiological and Cardiac Evaluation (§G2.4)"},{"key":"d34","ref":"G2.4","text":"CT angiography of the kidneys","gate":false},{"key":"d35","ref":"G2.4","text":"Renal ultrasound","gate":false},{"key":"d36","ref":"G2.4","text":"Chest radiograph","gate":false},{"key":"d37","ref":"G2.4","text":"ECG","gate":false},{"key":"d38","ref":"G2.4","text":"Echocardiogram (donors > 50 years, or hypertension, murmur or symptoms)","gate":false},{"key":"d39","ref":"G2.4","text":"Stress testing or coronary angiography (only if clinically indicated)","gate":false},{"group":"D. Psychosocial and Mental Health Evaluation (§G2.5)"},{"key":"d40","ref":"G2.5","text":"Psychological / psychiatric assessment — depression, anxiety and coercion screen","gate":false},{"key":"d41","ref":"G2.5","text":"Motivation and expectations explored and documented","gate":false},{"key":"d42","ref":"G2.5","text":"Social support for the recovery period confirmed","gate":false},{"key":"d43","ref":"G2.5","text":"Decision-making capacity confirmed — donor explains risks in own words","gate":false},{"key":"d44","ref":"G2.5","text":"Employment, income and insurance counselling documented","gate":false},{"group":"E. Multidisciplinary Team Review (§G2.8)"},{"key":"d45","ref":"G2.8","text":"Transplant nephrologist review — renal risk and projected lifetime ESRD risk documented","gate":false},{"key":"d46","ref":"G2.8","text":"Transplant surgeon review — anatomical feasibility and side of nephrectomy selected","gate":false},{"key":"d47","ref":"G2.8","text":"Transplant coordinator — structured education delivered and documented","gate":false},{"key":"d48","ref":"G2.8","text":"Social worker assessment","gate":false},{"key":"d49","ref":"G2.8","text":"Anaesthetic assessment and ASA classification","gate":false},{"key":"d50","ref":"G2.8","text":"Dietitian review (if indicated)","gate":false},{"group":"F. Consent, Legal and Ethics — MANDATORY GATES (§G1.5, §G2.6, §G2.7)"},{"key":"d51","ref":"G2.6","text":"GATE — Independent Donor Advocate met the donor alone; written opinion filed","gate":true},{"key":"d52","ref":"G2.7","text":"Written informed consent for evaluation (Arabic + English), witnessed","gate":false},{"key":"d53","ref":"G2.7","text":"Written informed consent for surgery (Arabic + English), witnessed","gate":false},{"key":"d54","ref":"G1.2","text":"Right of withdrawal explained verbally and in writing","gate":false},{"key":"d55","ref":"G2.7","text":"Interpreter or legal guardian provided where needed","gate":false},{"key":"d56","ref":"G2.7","text":"Absence of financial incentive confirmed and documented","gate":false},{"key":"d57","ref":"G1.5","text":"Organ donation declaration form (Ministry of Health) completed","gate":false},{"key":"d58","ref":"G2.9","text":"Donor summary report submitted to the Transplant Committee","gate":false},{"key":"d59","ref":"G2.7","text":"GATE — Ethics Committee approval obtained","gate":true},{"key":"d60","ref":"G1.5","text":"GATE — Multidisciplinary Transplant Committee approval minuted","gate":true},{"group":"G. Pre-operative Preparation (§G3.2)"},{"key":"d61","ref":"G3.2","text":"Donor identity confirmed using two identifiers","gate":false},{"key":"d62","ref":"G3.2","text":"Complete evaluation file and BOTH committee approvals verified in the chart","gate":false},{"key":"d63","ref":"G3.2","text":"Blood group and a current negative crossmatch re-confirmed","gate":false},{"key":"d64","ref":"G3.2","text":"Fasting instructions given — 8 h solids, clear fluids to 2 h","gate":false},{"key":"d65","ref":"G3.2","text":"Bowel preparation (only if specified by the operating surgeon)","gate":false},{"key":"d66","ref":"G3.2","text":"Venous access established, hydration commenced, baseline labs taken","gate":false},{"key":"d67","ref":"G7.2","text":"Surgical antibiotic prophylaxis prescribed — cefazolin 2 g IV within 60 min of incision","gate":false},{"key":"d68","ref":"G3.2","text":"VTE risk assessment completed with mechanical prophylaxis applied","gate":false},{"key":"d69","ref":"G3.2","text":"WHO surgical safety checklist and time-out completed","gate":false},{"key":"d70","ref":"G3.2","text":"Operative side independently confirmed against the CT angiogram by two staff members","gate":false},{"key":"d71","ref":"G3.2","text":"Consent re-verified with the donor personally on the day of surgery","gate":false},{"group":"H. Post-operative Care and Discharge (§G3.4, §G3.5)"},{"key":"d72","ref":"G3.4","text":"PACU observations documented and donor cleared for transfer","gate":false},{"key":"d73","ref":"G3.4","text":"Early ambulation achieved within 6–12 hours","gate":false},{"key":"d74","ref":"G3.4","text":"Daily CBC, creatinine and electrolytes until stable and improving","gate":false},{"key":"d75","ref":"G3.5","text":"All seven discharge criteria met and documented","gate":false},{"key":"d76","ref":"G3.5","text":"Discharge education — wound care, warning signs, permanent NSAID avoidance, activity restriction","gate":false},{"key":"d77","ref":"G3.5","text":"24-hour emergency contact details provided in writing","gate":false},{"key":"d78","ref":"G3.7","text":"Operative report completed within 24 hours","gate":false},{"key":"d79","ref":"G3.7","text":"Discharge summary issued and copied to the donor","gate":false},{"key":"d80","ref":"G3.7","text":"Any donor complication reported to Quality & Patient Safety within 24 hours","gate":false},{"key":"d81","ref":"G8.6","text":"GATE — Donor entered on the LIFELONG donor follow-up register","gate":true}],"recipient":[{"group":"A. Referral and Initial Assessment (§G4.2)"},{"key":"r1","ref":"G4.2","text":"Medical history — cause of ESRD, dialysis history, comorbidities, transfusions, pregnancies, prior transplants and rejection","gate":false},{"key":"r2","ref":"G4.2","text":"Physical examination — cardiopulmonary, abdominal, peripheral vascular, dialysis access, BMI","gate":false},{"key":"r3","ref":"G4.2","text":"Functional status and frailty assessment","gate":false},{"key":"r4","ref":"G4.2","text":"Adherence history documented — dialysis attendance, medication, clinic attendance","gate":false},{"key":"r5","ref":"G1.5","text":"Government-issued identification copy on file","gate":false},{"group":"B. Laboratory Tests (§G4.3)"},{"key":"r6","ref":"G4.3","text":"Complete blood count","gate":false},{"key":"r7","ref":"G4.3","text":"Electrolytes, urea and creatinine","gate":false},{"key":"r8","ref":"G4.3","text":"Calcium, phosphate and PTH","gate":false},{"key":"r9","ref":"G4.3","text":"Liver function tests and albumin","gate":false},{"key":"r10","ref":"G4.3","text":"Fasting glucose","gate":false},{"key":"r11","ref":"G4.3","text":"HbA1c","gate":false},{"key":"r12","ref":"G4.3","text":"Lipid profile","gate":false},{"key":"r13","ref":"G4.3","text":"Coagulation screen","gate":false},{"key":"r14","ref":"G4.3","text":"Thrombophilia screen (only if history of access thrombosis)","gate":false},{"key":"r15","ref":"G4.3","text":"HIV serology","gate":false},{"key":"r16","ref":"G4.3","text":"HBsAg, anti-HBs and anti-HBc","gate":false},{"key":"r17","ref":"G4.3","text":"Anti-HCV","gate":false},{"key":"r18","ref":"G4.3","text":"CMV IgG  — required to set the CMV prophylaxis strategy (§G7.4)","gate":false},{"key":"r19","ref":"G4.3","text":"EBV IgG  — required to set EBV surveillance (§G8.3)","gate":false},{"key":"r20","ref":"G4.3","text":"VZV IgG","gate":false},{"key":"r21","ref":"G4.3","text":"Syphilis serology","gate":false},{"key":"r22","ref":"G4.3","text":"Tuberculosis screening by IGRA, with chest radiograph","gate":false},{"key":"r23","ref":"G4.3","text":"ABO blood group and Rh typing","gate":false},{"key":"r24","ref":"G4.3","text":"HLA typing — Class I and II","gate":false},{"key":"r25","ref":"G4.3","text":"Antibody screen and cPRA — sensitisation quantified, unacceptable antigens listed","gate":false},{"key":"r26","ref":"G4.3","text":"Crossmatch — CDC and flow cytometry","gate":false},{"key":"r27","ref":"G4.3","text":"Urinalysis and urine culture (if residual urine output)","gate":false},{"group":"C. Cardiovascular and Pulmonary Assessment (§G4.4)"},{"key":"r28","ref":"G4.4","text":"Chest radiograph","gate":false},{"key":"r29","ref":"G4.4","text":"ECG","gate":false},{"key":"r30","ref":"G4.4","text":"Echocardiogram — EF, valves, pulmonary pressures, LVH","gate":false},{"key":"r31","ref":"G4.4","text":"Non-invasive stress testing (diabetes, age > 50, smoking, known CAD, or ≥ 2 risk factors)","gate":false},{"key":"r32","ref":"G4.4","text":"Coronary angiography (if stress test positive/equivocal or symptoms)","gate":false},{"key":"r33","ref":"G4.4","text":"Pulmonary function tests (significant smoking history or chronic lung disease)","gate":false},{"group":"D. Imaging and Surgical Planning (§G4.5)"},{"key":"r34","ref":"G4.5","text":"Abdominal ultrasound","gate":false},{"key":"r35","ref":"G4.5","text":"Non-contrast CT of abdomen and pelvis — iliac calcification and pelvic anatomy","gate":false},{"key":"r36","ref":"G4.5","text":"Doppler of iliac vessels — anastomosis site planned","gate":false},{"key":"r37","ref":"G4.5","text":"Renal ultrasound of native kidneys","gate":false},{"key":"r38","ref":"G4.5","text":"Urological assessment — urodynamics or VCUG (if bladder dysfunction or long-standing anuria)","gate":false},{"group":"E. Malignancy Screening (§G4.6)"},{"key":"r39","ref":"G4.6","text":"Colonoscopy (age ≥ 50, or earlier with family history or symptoms)","gate":false},{"key":"r40","ref":"G4.6","text":"Cervical cytology — women, per national policy","gate":false},{"key":"r41","ref":"G4.6","text":"Mammography — women ≥ 40 years, or per national policy","gate":false},{"key":"r42","ref":"G4.6","text":"Prostate-specific antigen — men ≥ 50 years, after discussion","gate":false},{"key":"r43","ref":"G4.6","text":"Baseline dermatological examination","gate":false},{"key":"r44","ref":"G4.6","text":"Oncology clearance and waiting period documented (if prior malignancy)","gate":false},{"group":"F. Infection Review and Immunisation (§G4.7, §G7.8)"},{"key":"r45","ref":"G4.7","text":"Latent or active infection identified and treated — TB, hepatitis, access infection, chronic ulcers","gate":false},{"key":"r46","ref":"G4.7","text":"Dental evaluation and formal dental clearance","gate":false},{"key":"r47","ref":"G7.8","text":"Hepatitis B vaccination course complete — anti-HBs titre checked 4–8 weeks after","gate":false},{"key":"r48","ref":"G7.8","text":"Influenza vaccination (inactivated)","gate":false},{"key":"r49","ref":"G7.8","text":"Pneumococcal vaccination","gate":false},{"key":"r50","ref":"G7.8","text":"COVID-19 primary course complete","gate":false},{"key":"r51","ref":"G7.8","text":"Tetanus / diphtheria / pertussis booster","gate":false},{"key":"r52","ref":"G7.8","text":"HPV vaccination (eligible age groups)","gate":false},{"key":"r53","ref":"G7.8","text":"LIVE vaccines given ≥ 4 weeks pre-transplant — MMR, varicella (contraindicated after transplant)","gate":false},{"key":"r54","ref":"G7.8","text":"Recombinant zoster vaccine","gate":false},{"key":"r55","ref":"G7.8","text":"Household contacts and caregivers vaccinated","gate":false},{"key":"r56","ref":"G7.8","text":"Vaccination record entered in the transplant record and copied to the patient","gate":false},{"group":"G. Psychosocial and Financial Evaluation (§G4.8)"},{"key":"r57","ref":"G4.8","text":"Mental health screen — depression, anxiety, cognitive impairment, substance use","gate":false},{"key":"r58","ref":"G4.8","text":"Named caregiver identified for the first three months post-transplant","gate":false},{"key":"r59","ref":"G4.8","text":"Financial coordinator review — sustainable access to immunosuppressants confirmed","gate":false},{"key":"r60","ref":"G4.8","text":"Understanding of lifelong immunosuppression and follow-up confirmed and documented","gate":false},{"key":"r61","ref":"G4.8","text":"Transport and distance feasibility for intensive early follow-up confirmed","gate":false},{"group":"H. Consent and Committee — MANDATORY GATES (§G4.10)"},{"key":"r62","ref":"G4.10","text":"Written informed consent (Arabic + English), signed and witnessed","gate":false},{"key":"r63","ref":"G5.2","text":"Immunological risk category assigned (standard / high / very high) and recorded in the chart","gate":false},{"key":"r64","ref":"G4.10","text":"Written evaluation summary submitted to the Multidisciplinary Transplant Committee","gate":false},{"key":"r65","ref":"G4.10","text":"GATE — Transplant Committee decision minuted (accept / defer / decline)","gate":true},{"key":"r66","ref":"G4.10","text":"Decision communicated to the patient in person and documented","gate":false},{"key":"r67","ref":"G4.10","text":"Annual re-evaluation completed (if waiting longer than 12 months)","gate":false},{"group":"I. Pre-operative Checks"},{"key":"r68","ref":"G4.10","text":"Crossmatch and virology repeated within 14 days of the planned surgery","gate":false},{"key":"r69","ref":"G7.4","text":"GATE — CMV donor/recipient serostatus PAIR documented and prophylaxis strategy chosen","gate":true},{"key":"r70","ref":"G8.3","text":"EBV donor/recipient serostatus PAIR documented (D+/R− triggers EBV DNA surveillance)","gate":false},{"key":"r71","ref":"G5.3","text":"Induction agent prescribed per risk category — basiliximab or anti-thymocyte globulin","gate":false},{"key":"r72","ref":"G5.3","text":"Intra-operative methylprednisolone 500 mg IV prescribed (before reperfusion)","gate":false},{"key":"r73","ref":"G7.2","text":"Surgical antibiotic prophylaxis prescribed — cefazolin 2 g IV within 60 min of incision","gate":false},{"key":"r74","ref":"G3.2","text":"WHO surgical safety checklist and time-out completed","gate":false},{"group":"J. Post-operative and Discharge"},{"key":"r75","ref":"G5.4.1","text":"Tacrolimus commenced and daily trough monitoring started","gate":false},{"key":"r76","ref":"G5.4.2","text":"Mycophenolate prescribed; contraception counselling documented if applicable","gate":false},{"key":"r77","ref":"G5.4.3","text":"Steroid taper prescribed; gastric protection, calcium and vitamin D prescribed","gate":false},{"key":"r78","ref":"G7.3","text":"PJP prophylaxis prescribed — TMP-SMX (or documented alternative if sulfa-allergic)","gate":false},{"key":"r79","ref":"G7.4","text":"CMV prophylaxis or pre-emptive strategy prescribed, renally dose-adjusted","gate":false},{"key":"r80","ref":"G7.5","text":"Antifungal prophylaxis prescribed — nystatin or clotrimazole","gate":false},{"key":"r81","ref":"G7.5","text":"Acyclovir prescribed (only if NOT receiving valganciclovir)","gate":false},{"key":"r82","ref":"G8.3","text":"Allograft Doppler ultrasound performed before discharge","gate":false},{"key":"r83","ref":"G7.2","text":"Ureteric stent removal date booked (2–4 weeks) and recorded","gate":false},{"key":"r84","ref":"G5.8","text":"Medication card issued in Arabic and English","gate":false},{"key":"r85","ref":"G7.9","text":"Patient education — warning signs, food and water safety, infection prevention","gate":false},{"key":"r86","ref":"G8.7","text":"Self-monitoring taught — daily weight, blood pressure, temperature, urine output","gate":false},{"key":"r87","ref":"G8.8","text":"Discharge summary issued with full medication list and drug-level plan","gate":false},{"key":"r88","ref":"G8.7","text":"24-hour emergency contact details provided in writing","gate":false},{"key":"r89","ref":"G8.2","text":"Follow-up appointments booked per the Guideline 8 schedule","gate":false},{"key":"r90","ref":"G8.2","text":"GATE — Patient entered on the follow-up register","gate":true}],"recipVisits":[{"section":"Clinic Visits (§G8.2) — weeks 1–4 require 2–3 visits per week; the rows below are the minimum milestones"},{"key":"rv1","label":"Day 3 after discharge","offset":3,"grace":2,"tests":"Creatinine, electrolytes, magnesium, CBC, glucose, tacrolimus trough; weight, BP, urine output, wound"},{"key":"rv2","label":"Day 7","offset":7,"grace":2,"tests":"As above"},{"key":"rv3","label":"Day 10","offset":10,"grace":2,"tests":"As above"},{"key":"rv4","label":"Day 14","offset":14,"grace":3,"tests":"As above"},{"key":"rv5","label":"Day 21","offset":21,"grace":3,"tests":"As above"},{"key":"rv6","label":"Day 28","offset":28,"grace":3,"tests":"As above; ureteric stent removal due 2–4 weeks (§G7.2)"},{"key":"rv7","label":"Week 6","offset":42,"grace":7,"tests":"As above; add urinalysis and urine protein-to-creatinine ratio"},{"key":"rv8","label":"Week 8","offset":56,"grace":7,"tests":"As above"},{"key":"rv9","label":"Month 3","offset":91,"grace":10,"tests":"Add LFTs, calcium, phosphate, uric acid; DSA; allograft Doppler ultrasound; protocol biopsy if high risk"},{"key":"rv10","label":"Month 4","offset":121,"grace":14,"tests":"Routine panel + tacrolimus trough"},{"key":"rv11","label":"Month 5","offset":152,"grace":14,"tests":"Routine panel + tacrolimus trough"},{"key":"rv12","label":"Month 6","offset":182,"grace":14,"tests":"Add HbA1c and lipid profile; DSA; end of PJP prophylaxis review; CMV surveillance if D+/R−"},{"key":"rv13","label":"Month 8","offset":243,"grace":21,"tests":"Routine panel + tacrolimus trough"},{"key":"rv14","label":"Month 10","offset":304,"grace":21,"tests":"Routine panel + tacrolimus trough"},{"key":"rv15","label":"Month 12","offset":365,"grace":21,"tests":"DSA; UPCR; annual comprehensive review (§G8.5); protocol biopsy if high risk"},{"key":"rv16","label":"Month 15","offset":456,"grace":30,"tests":"Routine panel + tacrolimus trough"},{"key":"rv17","label":"Month 18","offset":547,"grace":30,"tests":"Routine panel + tacrolimus trough"},{"key":"rv18","label":"Month 21","offset":638,"grace":30,"tests":"Routine panel + tacrolimus trough"},{"key":"rv19","label":"Month 24","offset":730,"grace":30,"tests":"DSA (annual); end of BK surveillance; annual comprehensive review"},{"key":"rv20","label":"Month 30","offset":913,"grace":45,"tests":"Routine panel"},{"key":"rv21","label":"Year 3","offset":1095,"grace":45,"tests":"DSA (annual); annual comprehensive review; bone density (2-yearly)"},{"key":"rv22","label":"Year 4","offset":1460,"grace":60,"tests":"DSA (annual); annual comprehensive review"},{"key":"rv23","label":"Year 5","offset":1826,"grace":60,"tests":"DSA (annual); annual comprehensive review; bone density (2-yearly)"},{"key":"rv24","label":"Year 6","offset":2191,"grace":60,"tests":"Annual review — minimum every 6 months for life thereafter"},{"key":"rv25","label":"Year 7","offset":2556,"grace":60,"tests":"Annual review"},{"key":"rv26","label":"Year 8","offset":2922,"grace":60,"tests":"Annual review"},{"key":"rv27","label":"Year 9","offset":3287,"grace":60,"tests":"Annual review"},{"key":"rv28","label":"Year 10","offset":3652,"grace":60,"tests":"Annual review"},{"section":"Scheduled Surveillance Tests (§G8.3) — record the date each is performed"},{"key":"rv29","label":"DSA — month 3","offset":91,"grace":14,"tests":"Donor-specific antibody"},{"key":"rv30","label":"DSA — month 6","offset":182,"grace":14,"tests":"Donor-specific antibody"},{"key":"rv31","label":"DSA — month 12","offset":365,"grace":21,"tests":"Donor-specific antibody, then annually"},{"key":"rv32","label":"BK PCR — month 1","offset":30,"grace":7,"tests":"Plasma BK virus PCR (monthly to month 6)"},{"key":"rv33","label":"BK PCR — month 2","offset":61,"grace":7,"tests":"Plasma BK virus PCR"},{"key":"rv34","label":"BK PCR — month 3","offset":91,"grace":7,"tests":"Plasma BK virus PCR"},{"key":"rv35","label":"BK PCR — month 4","offset":121,"grace":7,"tests":"Plasma BK virus PCR"},{"key":"rv36","label":"BK PCR — month 5","offset":152,"grace":7,"tests":"Plasma BK virus PCR"},{"key":"rv37","label":"BK PCR — month 6","offset":182,"grace":7,"tests":"Plasma BK virus PCR"},{"key":"rv38","label":"BK PCR — month 9","offset":273,"grace":14,"tests":"Plasma BK virus PCR (3-monthly to month 24)"},{"key":"rv39","label":"BK PCR — month 12","offset":365,"grace":14,"tests":"Plasma BK virus PCR"},{"key":"rv40","label":"BK PCR — month 15","offset":456,"grace":14,"tests":"Plasma BK virus PCR"},{"key":"rv41","label":"BK PCR — month 18","offset":547,"grace":14,"tests":"Plasma BK virus PCR"},{"key":"rv42","label":"BK PCR — month 21","offset":638,"grace":14,"tests":"Plasma BK virus PCR"},{"key":"rv43","label":"BK PCR — month 24","offset":730,"grace":14,"tests":"Plasma BK virus PCR — surveillance ends"},{"key":"rv44","label":"CMV — end of prophylaxis review","offset":182,"grace":14,"tests":"D+/R−: stop valganciclovir at 6 months and begin 1–2 weekly PCR for 3 months"},{"key":"rv45","label":"CMV PCR surveillance complete","offset":273,"grace":21,"tests":"D+/R−: 3 months of post-prophylaxis PCR completed"},{"key":"rv46","label":"EBV DNA — if D+/R− only","offset":30,"grace":7,"tests":"Monthly to month 6, then 3-monthly to month 12 (§G8.3)"},{"key":"rv47","label":"UPCR — month 3","offset":91,"grace":14,"tests":"Urine protein-to-creatinine ratio"},{"key":"rv48","label":"UPCR — month 6","offset":182,"grace":14,"tests":"Urine protein-to-creatinine ratio"},{"key":"rv49","label":"UPCR — month 9","offset":273,"grace":14,"tests":"Urine protein-to-creatinine ratio"},{"key":"rv50","label":"UPCR — month 12","offset":365,"grace":14,"tests":"Urine protein-to-creatinine ratio, then annually"},{"key":"rv51","label":"Annual comprehensive review — year 1","offset":365,"grace":30,"tests":"Cardiovascular risk, bone health, cancer screening, vaccination, dental, psychosocial (§G8.5)"},{"key":"rv52","label":"Annual comprehensive review — year 2","offset":730,"grace":30,"tests":"As §G8.5"},{"key":"rv53","label":"Annual comprehensive review — year 3","offset":1095,"grace":30,"tests":"As §G8.5"},{"key":"rv54","label":"Annual comprehensive review — year 4","offset":1460,"grace":30,"tests":"As §G8.5"},{"key":"rv55","label":"Annual comprehensive review — year 5","offset":1826,"grace":30,"tests":"As §G8.5"}],"donorVisits":[{"key":"dv1","label":"3–7 days after discharge","offset":5,"grace":4,"tests":"Wound review, pain, return of function — creatinine, CBC, electrolytes"},{"key":"dv2","label":"1 month","offset":30,"grace":10,"tests":"Recovery, return-to-work planning, psychological wellbeing — creatinine/eGFR, urinalysis, BP"},{"key":"dv3","label":"3 months","offset":91,"grace":14,"tests":"Creatinine/eGFR, UPCR, blood pressure, weight"},{"key":"dv4","label":"6 months","offset":182,"grace":21,"tests":"Creatinine/eGFR, urinalysis, blood pressure"},{"key":"dv5","label":"12 months","offset":365,"grace":30,"tests":"Creatinine/eGFR, UPCR, fasting glucose, lipids, blood pressure, BMI"},{"key":"dv6","label":"Year 2","offset":730,"grace":60,"tests":"Annual: creatinine/eGFR, UPCR, BP, weight, fasting glucose"},{"key":"dv7","label":"Year 3","offset":1095,"grace":60,"tests":"Annual health check"},{"key":"dv8","label":"Year 4","offset":1460,"grace":60,"tests":"Annual health check"},{"key":"dv9","label":"Year 5","offset":1826,"grace":60,"tests":"Annual health check"},{"key":"dv10","label":"Year 6","offset":2191,"grace":60,"tests":"Annual health check"},{"key":"dv11","label":"Year 7","offset":2556,"grace":60,"tests":"Annual health check"},{"key":"dv12","label":"Year 8","offset":2922,"grace":60,"tests":"Annual health check"},{"key":"dv13","label":"Year 9","offset":3287,"grace":60,"tests":"Annual health check"},{"key":"dv14","label":"Year 10","offset":3652,"grace":60,"tests":"Annual health check"},{"key":"dv15","label":"Year 11","offset":4017,"grace":60,"tests":"Annual health check"},{"key":"dv16","label":"Year 12","offset":4383,"grace":60,"tests":"Annual health check"},{"key":"dv17","label":"Year 13","offset":4748,"grace":60,"tests":"Annual health check"},{"key":"dv18","label":"Year 14","offset":5113,"grace":60,"tests":"Annual health check"},{"key":"dv19","label":"Year 15","offset":5478,"grace":60,"tests":"Annual health check — follow-up continues for life"}],"recipCols":["Creatinine / eGFR","Tacrolimus trough"],"donorCols":["Creatinine / eGFR","UPCR","Blood pressure","Weight"]};
+</script>
+<script>
+/* ==========================================================================
+   NNUH Kidney Transplant — Coordinator Tracker (client-side application)
+   State lives in memory. Persistence is by explicit case-file save/load.
+   ========================================================================== */
+'use strict';
+
+const DATA = window.__DATA__;
+const TODAY = () => new Date(new Date().toDateString());
+const iso = (d) => {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const parseISO = (s) => (s ? new Date(s + 'T00:00:00') : null);
+const addDays = (d, n) => new Date(d.getTime() + n * 86400000);
+const fmt = (s) => {
+  const d = parseISO(s);
+  if (!d) return '';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+const el = (tag, attrs = {}, kids = []) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'text') n.textContent = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  (Array.isArray(kids) ? kids : [kids]).forEach((c) => { if (c) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+  return n;
+};
+
+/* ---------------------------------------------------------------- state */
+const blankState = () => ({
+  meta: {
+    version: 1,
+    caseId: '',
+    donorName: '', donorMrn: '', donorDob: '',
+    recipientName: '', recipientMrn: '', recipientDob: '',
+    coordinator: '', opened: iso(TODAY()),
+    caseStatus: 'waiting', scheduledDate: '',
+    transplantDate: '', nephrectomyDate: '',
+    email: '', savedAt: '',
+  },
+  // key -> {na, ordered, completed, result, notes}
+  items: {},
+  // key -> {attended, notes, values:{}}
+  visits: {},
+});
+
+let S = blankState();
+let dirty = false;
+let hasCase = false;
+let activeTab = 'registry';
+const filters = { donor: 'all', recipient: 'all' };
+const search = { donor: '', recipient: '' };
+
+/* ---------------------------------------------------------- cloud config */
+const CFG_KEY = 'nnuh_tracker_cfg_v1';
+const loadCfg = () => {
+  try { return Object.assign({ gasUrl: '', emailjsService: '', emailjsTemplate: '', emailjsPublicKey: '', viewPassword: '', casePassword: '', settingsPassword: '' }, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); }
+  catch { return { gasUrl: '', emailjsService: '', emailjsTemplate: '', emailjsPublicKey: '', viewPassword: '', casePassword: '', settingsPassword: '' }; }
+};
+let CFG = loadCfg();
+const saveCfg = () => { localStorage.setItem(CFG_KEY, JSON.stringify(CFG)); syncCloudPill(); };
+const cloudReady = () => !!CFG.gasUrl;
+
+let registryCache = [];
+let registryQuery = '';
+let registryLoading = false;
+let registryView = 'home'; // 'home' | 'register' | 'browse'
+let registryUnlocked = false;
+let caseUnlocked = false;
+let settingsUnlocked = false;
+let browseWho = 'donor'; // 'donor' | 'recipient'
+let statusFilter = 'all'; // 'all' | 'waiting' | 'scheduled' | 'transplanted'
+let dateFrom = '';
+let dateTo = '';
+
+const CASE_STATUS = {
+  waiting: { label: 'On waiting list', badge: 'b-todo' },
+  scheduled: { label: 'Scheduled', badge: 'b-due' },
+  transplanted: { label: 'Transplanted', badge: 'b-complete' },
+};
+
+const markDirty = () => {
+  dirty = true;
+  syncCloudPill();
+};
+const markClean = () => {
+  dirty = false;
+  syncCloudPill();
+};
+function syncCloudPill(state) {
+  const b = document.getElementById('saveState');
+  if (!b) return;
+  if (!cloudReady()) { b.textContent = 'Cloud not configured'; b.className = 'cloud-pill off'; return; }
+  if (state === 'busy') { b.textContent = 'Syncing…'; b.className = 'cloud-pill busy'; return; }
+  if (state === 'error') { b.textContent = 'Sync failed'; b.className = 'cloud-pill off'; return; }
+  b.textContent = dirty ? 'Unsaved changes' : 'Synced to Google Sheet';
+  b.className = 'cloud-pill ' + (dirty ? 'off' : 'on');
+}
+
+const itemState = (key) => (S.items[key] ||= { na: false, ordered: '', completed: '', result: '', notes: '' });
+const visitState = (key) => (S.visits[key] ||= { attended: '', notes: '', values: {} });
+
+const statusOf = (st) => {
+  if (st.na) return 'na';
+  if (st.completed) return 'complete';
+  if (st.ordered) return 'pending';
+  return 'todo';
+};
+const STATUS_LABEL = { complete: 'Complete', pending: 'Pending result', todo: 'Not started', na: 'N/A' };
+
+/* --------------------------------------------------------------- totals */
+function tally(list) {
+  const t = { complete: 0, pending: 0, todo: 0, na: 0, gatesOpen: [], total: 0 };
+  list.forEach((it) => {
+    if (it.group) return;
+    const st = itemState(it.key);
+    const s = statusOf(st);
+    t[s] += 1;
+    if (s !== 'na') t.total += 1;
+    if (it.gate && s !== 'complete' && s !== 'na') t.gatesOpen.push(it);
+  });
+  t.outstanding = t.pending + t.todo;
+  t.pct = t.total ? Math.round((t.complete / t.total) * 100) : 0;
+  t.ready = t.total > 0 && t.outstanding === 0;
+  return t;
+}
+
+/* ---------------------------------------------------------- visit logic */
+function visitStatus(v, anchorISO) {
+  const st = visitState(v.key);
+  if (st.attended) return { code: 'attended', label: 'Attended', due: dueOf(v, anchorISO) };
+  const due = dueOf(v, anchorISO);
+  if (!due) return { code: 'unset', label: 'Set the date', due: null };
+  const t = TODAY();
+  if (t > addDays(due, v.grace)) return { code: 'overdue', label: 'OVERDUE', due };
+  if (t >= addDays(due, -v.grace)) return { code: 'due', label: 'Due now', due };
+  return { code: 'scheduled', label: 'Scheduled', due };
+}
+function dueOf(v, anchorISO) {
+  const a = parseISO(anchorISO);
+  return a ? addDays(a, v.offset) : null;
+}
+
+/* =========================================================== RENDERING */
+const app = () => document.getElementById('app');
+
+function render() {
+  const root = app();
+  root.innerHTML = '';
+  const tabsNav = document.querySelector('.tabs');
+  const showTabs = activeTab !== 'registry';
+  tabsNav.style.display = showTabs ? '' : 'none';
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === activeTab));
+  const gated = ['overview', 'donor', 'recipient', 'rfu', 'dfu'].includes(activeTab) && CFG.casePassword && !caseUnlocked;
+  if (gated) { root.appendChild(renderCaseGate()); updateHeaderChips(); syncCloudPill(); return; }
+  if (activeTab === 'registry') root.appendChild(renderRegistry());
+  else if (activeTab === 'overview') root.appendChild(renderOverview());
+  else if (activeTab === 'donor') root.appendChild(renderChecklist('donor'));
+  else if (activeTab === 'recipient') root.appendChild(renderChecklist('recipient'));
+  else if (activeTab === 'rfu') root.appendChild(renderFollowUp('rfu'));
+  else if (activeTab === 'dfu') root.appendChild(renderFollowUp('dfu'));
+  else if (activeTab === 'help') root.appendChild(renderHelp());
+  updateHeaderChips();
+  syncCloudPill();
+}
+
+function updateHeaderChips() {
+  const d = tally(DATA.donor), r = tally(DATA.recipient);
+  const c = document.getElementById('headerChips');
+  c.innerHTML = '';
+  c.appendChild(chip('Donor', `${d.complete}/${d.total}`, d.ready ? 'ok' : d.outstanding ? 'warn' : 'muted'));
+  c.appendChild(chip('Recipient', `${r.complete}/${r.total}`, r.ready ? 'ok' : r.outstanding ? 'warn' : 'muted'));
+  const od = overdueCount();
+  c.appendChild(chip('Overdue visits', String(od), od ? 'bad' : 'ok'));
+}
+function chip(label, value, tone) {
+  return el('div', { class: 'chip ' + tone }, [el('span', { class: 'chip-l', text: label }), el('strong', { text: value })]);
+}
+function overdueCount() {
+  let n = 0;
+  DATA.recipVisits.forEach((v) => { if (!v.section && visitStatus(v, S.meta.transplantDate).code === 'overdue') n++; });
+  DATA.donorVisits.forEach((v) => { if (!v.section && visitStatus(v, S.meta.nephrectomyDate).code === 'overdue') n++; });
+  return n;
+}
+
+function renderCaseGate() {
+  const wrap = el('div', { class: 'stack' });
+  const lock = card('Enter password to view this case', `Password required to open ${S.meta.recipientName || S.meta.donorName || 'this case'}\u2019s checklists and overview.`);
+  const row = el('div', { class: 'toolbar' });
+  const pwInput = el('input', { type: 'password', class: 'search', placeholder: 'Password' });
+  const go = () => {
+    if (pwInput.value === CFG.casePassword) { caseUnlocked = true; render(); }
+    else toast('Incorrect password.', true);
+  };
+  pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  const btn = el('button', { class: 'btn', text: 'Unlock' });
+  btn.addEventListener('click', go);
+  row.append(pwInput, btn);
+  lock.appendChild(row);
+  const back = el('button', { class: 'btn btn-ghost', text: '\u2190 Back to registry', style: 'margin-top:10px' });
+  back.addEventListener('click', () => { activeTab = 'registry'; registryView = 'home'; render(); });
+  lock.appendChild(back);
+  wrap.appendChild(lock);
+  return wrap;
+}
+
+/* ------------------------------------------------------------ registry */
+function renderRegistry() {
+  const wrap = el('div', { class: 'stack' });
+
+  const hero = el('section', { class: 'reg-hero' });
+  hero.appendChild(el('h2', { text: 'NNUH Kidney Transplant Program — Patient Registry' }));
+  hero.appendChild(el('p', { text: 'Register a new donor–recipient pair, or view the donor and recipient list (password protected).' }));
+  wrap.appendChild(hero);
+
+  if (!cloudReady()) {
+    const warn = card('Cloud not configured', null);
+    warn.appendChild(el('p', { class: 'muted-note', text: 'Add your Google Apps Script URL in Settings to enable the shared registry, cloud save, Google Sheet export and email reminders.' }));
+    const b = el('button', { class: 'btn', text: 'Open Settings' });
+    b.addEventListener('click', openSettings);
+    warn.appendChild(b);
+    wrap.appendChild(warn);
+  }
+
+  if (registryView === 'home') { wrap.appendChild(renderRegistryHome()); return wrap; }
+  if (registryView === 'register') { wrap.appendChild(renderRegisterForm()); return wrap; }
+  wrap.appendChild(renderRegistryBrowse());
+  return wrap;
+}
+
+function renderRegistryHome() {
+  const box = el('div', { class: 'sheet-tiles', style: 'grid-template-columns:1fr 1fr' });
+  const regTile = el('button', { class: 'sheet-tile' }, [
+    el('b', { text: 'Register' }),
+    el('span', { text: 'Register a new donor \u2013 recipient pair and open its checklists.' }),
+  ]);
+  regTile.addEventListener('click', () => { registryView = 'register'; render(); });
+  const viewTile = el('button', { class: 'sheet-tile' }, [
+    el('b', { text: 'View donors & recipients' }),
+    el('span', { text: 'Password-protected list of everyone registered, with search and date filter.' }),
+  ]);
+  viewTile.addEventListener('click', () => { registryView = 'browse'; render(); });
+  box.append(regTile, viewTile);
+  return box;
+}
+
+function renderRegisterForm() {
+  const wrap = el('div', { class: 'stack' });
+  const back = el('button', { class: 'btn btn-ghost', text: '\u2190 Back' });
+  back.addEventListener('click', () => { registryView = 'home'; render(); });
+  wrap.appendChild(back);
+
+  const regCard = card('Register a new donor \u2013 recipient pair', 'Creates a new case and opens its checklists.');
+  const grid = el('div', { class: 'form-grid' });
+  const tmp = { donorName: '', donorMrn: '', recipientName: '', recipientMrn: '', coordinator: '', email: '',
+    caseStatus: 'waiting', scheduledDate: '', transplantDate: '' };
+  const f = (label, key, type = 'text') => {
+    const input = el('input', { type });
+    input.addEventListener('input', (e) => { tmp[key] = e.target.value; });
+    return el('label', { class: 'field' }, [el('span', { text: label }), input]);
+  };
+  grid.append(
+    f('Donor name', 'donorName'), f('Donor MRN', 'donorMrn'),
+    f('Recipient name', 'recipientName'), f('Recipient MRN', 'recipientMrn'),
+    f('Transplant coordinator', 'coordinator'), f('Reminder email', 'email', 'email'),
+  );
+  regCard.appendChild(grid);
+
+  const statusRow = el('div', { class: 'form-grid' });
+  const statusSel = el('select');
+  Object.keys(CASE_STATUS).forEach((k) => statusSel.appendChild(el('option', { value: k, text: CASE_STATUS[k].label })));
+  statusSel.value = tmp.caseStatus;
+  const dateWrap = el('div');
+  const renderStatusDate = () => {
+    dateWrap.innerHTML = '';
+    if (tmp.caseStatus === 'scheduled') {
+      const i = el('input', { type: 'date', value: tmp.scheduledDate });
+      i.addEventListener('change', (e) => { tmp.scheduledDate = e.target.value; });
+      dateWrap.appendChild(el('label', { class: 'field' }, [el('span', { text: 'Scheduled transplant date' }), i]));
+    } else if (tmp.caseStatus === 'transplanted') {
+      const i = el('input', { type: 'date', value: tmp.transplantDate });
+      i.addEventListener('change', (e) => { tmp.transplantDate = e.target.value; });
+      dateWrap.appendChild(el('label', { class: 'field' }, [el('span', { text: 'Date of transplant' }), i]));
+    }
+  };
+  statusSel.addEventListener('change', (e) => { tmp.caseStatus = e.target.value; renderStatusDate(); });
+  statusRow.append(el('label', { class: 'field' }, [el('span', { text: 'Status' }), statusSel]), dateWrap);
+  renderStatusDate();
+  regCard.appendChild(statusRow);
+
+  const regBtn = el('button', { class: 'btn', text: 'Register and open', style: 'margin-top:14px' });
+  regBtn.addEventListener('click', async () => {
+    if (!tmp.recipientName && !tmp.donorName) { toast('Enter at least a donor or recipient name.', true); return; }
+    if (dirty && hasCase && !confirm('Discard the currently open case and register a new one?')) return;
+    S = blankState();
+    Object.assign(S.meta, tmp);
+    S.meta.caseId = genCaseId();
+    hasCase = true;
+    if (cloudReady()) { await cloudSave(true); toast('Case registered.'); }
+    else toast('Case started (not saved to cloud \u2014 add a Google Apps Script URL in Settings).');
+    registryView = 'home';
+    activeTab = 'overview';
+    render();
+  });
+  regCard.appendChild(regBtn);
+  wrap.appendChild(regCard);
+  return wrap;
+}
+
+function renderRegistryBrowse() {
+  const wrap = el('div', { class: 'stack' });
+  const back = el('button', { class: 'btn btn-ghost', text: '\u2190 Back' });
+  back.addEventListener('click', () => { registryView = 'home'; registryUnlocked = false; render(); });
+  wrap.appendChild(back);
+
+  if (CFG.viewPassword && !registryUnlocked) {
+    const lock = card('Enter password to view the list', 'This list holds every registered donor and recipient.');
+    const row = el('div', { class: 'toolbar' });
+    const pwInput = el('input', { type: 'password', class: 'search', placeholder: 'Password' });
+    const go = () => {
+      if (pwInput.value === CFG.viewPassword) { registryUnlocked = true; render(); }
+      else toast('Incorrect password.', true);
+    };
+    pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    const btn = el('button', { class: 'btn', text: 'Unlock' });
+    btn.addEventListener('click', go);
+    row.append(pwInput, btn);
+    lock.appendChild(row);
+    wrap.appendChild(lock);
+    return wrap;
+  }
+
+  // sub-tabs: donor / recipient
+  const subTabs = el('div', { class: 'segmented' });
+  [['donor', 'Donors'], ['recipient', 'Recipients']].forEach(([k, lbl]) => {
+    const b = el('button', { class: 'seg-btn' + (browseWho === k ? ' on' : ''), text: lbl });
+    b.addEventListener('click', () => { browseWho = k; render(); });
+    subTabs.appendChild(b);
+  });
+  wrap.appendChild(subTabs);
+
+  // search + status + date filter
+  const listCard = card('Registered ' + (browseWho === 'donor' ? 'donors' : 'recipients'), 'Search by name or MRN, filter by status or the date the case was opened, then click a row to open it.');
+  const tools = el('div', { class: 'toolbar' });
+  const sInput = el('input', { type: 'search', class: 'search', placeholder: 'Search name or MRN\u2026', value: registryQuery });
+  let debounceT;
+  sInput.addEventListener('input', (e) => {
+    registryQuery = e.target.value;
+    clearTimeout(debounceT);
+    debounceT = setTimeout(loadRegistryList, 250);
+  });
+  tools.appendChild(sInput);
+  const statusGroup = el('div', { class: 'segmented' });
+  [['all', 'All'], ['waiting', 'Waiting list'], ['scheduled', 'Scheduled'], ['transplanted', 'Transplanted']].forEach(([k, lbl]) => {
+    const b = el('button', { class: 'seg-btn' + (statusFilter === k ? ' on' : ''), text: lbl });
+    b.addEventListener('click', () => { statusFilter = k; render(); });
+    statusGroup.appendChild(b);
+  });
+  tools.appendChild(statusGroup);
+  const fromF = el('label', { class: 'field small' }, [el('span', { text: 'Opened from' }),
+    (() => { const i = el('input', { type: 'date', value: dateFrom }); i.addEventListener('change', (e) => { dateFrom = e.target.value; paintList(); }); return i; })()]);
+  const toF = el('label', { class: 'field small' }, [el('span', { text: 'Opened to' }),
+    (() => { const i = el('input', { type: 'date', value: dateTo }); i.addEventListener('change', (e) => { dateTo = e.target.value; paintList(); }); return i; })()]);
+  tools.append(fromF, toF);
+  if (dateFrom || dateTo) {
+    const clr = el('button', { class: 'btn btn-ghost', text: 'Clear dates' });
+    clr.addEventListener('click', () => { dateFrom = ''; dateTo = ''; render(); });
+    tools.appendChild(clr);
+  }
+  listCard.appendChild(tools);
+  const listBox = el('div', { class: 'case-list', id: 'caseListBox' });
+  listCard.appendChild(listBox);
+  wrap.appendChild(listCard);
+
+  function filteredCases() {
+    return registryCache.filter((c) => {
+      const opened = (c.opened || '').slice(0, 10);
+      if (dateFrom && (!opened || opened < dateFrom)) return false;
+      if (dateTo && (!opened || opened > dateTo)) return false;
+      const st = c.caseStatus || 'waiting';
+      if (statusFilter !== 'all' && st !== statusFilter) return false;
+      return true;
+    });
+  }
+  function paintList() {
+    listBox.innerHTML = '';
+    if (!cloudReady()) { listBox.appendChild(el('div', { class: 'empty-state', text: 'Configure the cloud connection to browse registered patients.' })); return; }
+    if (registryLoading) { listBox.appendChild(el('div', { class: 'empty-state', text: 'Loading\u2026' })); return; }
+    const rows = filteredCases();
+    if (!rows.length) { listBox.appendChild(el('div', { class: 'empty-state', text: 'No registered pairs match yet.' })); return; }
+    rows.forEach((c) => {
+      const st = CASE_STATUS[c.caseStatus || 'waiting'];
+      const name = browseWho === 'donor' ? (c.donorName || 'Unnamed donor') : (c.recipientName || 'Unnamed recipient');
+      const mrn = browseWho === 'donor' ? c.donorMrn : c.recipientMrn;
+      const other = browseWho === 'donor' ? (c.recipientName || 'Unnamed recipient') : (c.donorName || 'Unnamed donor');
+      const row = el('div', { class: 'case-row', style: 'grid-template-columns:1fr auto auto auto' });
+      row.appendChild(el('div', { class: 'who' }, [
+        el('b', { text: name }),
+        el('span', { text: `${browseWho === 'donor' ? 'Recipient' : 'Donor'}: ${other}` }),
+      ]));
+      row.appendChild(el('div', { class: 'mrns', text: `MRN ${mrn || '\u2014'}` }));
+      row.appendChild(badge(st.badge.replace('b-', ''), st.label));
+      const dateText = c.caseStatus === 'transplanted' && c.transplantDate ? 'Transplanted ' + fmt(c.transplantDate)
+        : c.caseStatus === 'scheduled' && c.scheduledDate ? 'Scheduled ' + fmt(c.scheduledDate)
+        : c.opened ? 'Opened ' + fmt(c.opened.slice(0, 10)) : '';
+      row.appendChild(el('div', { class: 'upd', text: dateText }));
+      row.addEventListener('click', () => {
+        if (dirty && hasCase && !confirm('Discard unsaved changes on the current case and open this one?')) return;
+        openCase(c.caseId);
+      });
+      listBox.appendChild(row);
+    });
+  }
+  async function loadRegistryList() {
+    if (!cloudReady()) { paintList(); return; }
+    registryLoading = true; paintList();
+    try { registryCache = await gasListCases(registryQuery); }
+    catch (e) { toast('Could not load the registry \u2014 ' + e.message, true); registryCache = []; }
+    registryLoading = false; paintList();
+  }
+  loadRegistryList();
+
+  return wrap;
+}
+
+/* ------------------------------------------------------------ overview */
+function renderOverview() {
+  const wrap = el('div', { class: 'stack' });
+
+  // patient heading + quick-open sheet tiles
+  const head = card(null, null);
+  const ph = el('div', { class: 'patient-head' });
+  ph.appendChild(el('h2', { text: `${S.meta.recipientName || 'Unnamed recipient'} \u2194 ${S.meta.donorName || 'Unnamed donor'}` }));
+  const back = el('button', { class: 'btn btn-ghost', text: '\u2190 Registry' });
+  back.addEventListener('click', () => { activeTab = 'registry'; registryView = 'home'; render(); });
+  ph.appendChild(back);
+  head.appendChild(ph);
+  const dT = tally(DATA.donor), rT = tally(DATA.recipient);
+  const tiles = el('div', { class: 'sheet-tiles' });
+  const tile = (label, sub, tab, t) => {
+    const b = el('button', { class: 'sheet-tile' }, [
+      el('span', { class: 'pct', text: (t ? t.pct : 0) + '%' }),
+      el('b', { text: label }), el('span', { text: sub }),
+    ]);
+    b.addEventListener('click', () => { activeTab = tab; render(); });
+    return b;
+  };
+  tiles.append(
+    tile('Donor checklist', 'Evaluation & perioperative', 'donor', dT),
+    tile('Recipient checklist', 'Evaluation & perioperative', 'recipient', rT),
+    tile('Donor follow-up', 'Lifelong schedule', 'dfu', null),
+    tile('Recipient follow-up', 'Post-transplant schedule', 'rfu', null),
+  );
+  head.appendChild(tiles);
+  wrap.appendChild(head);
+
+  // identity
+  const idCard = card('Case identity', 'One case file per donor–recipient pair.');
+  const grid = el('div', { class: 'form-grid' });
+  const f = (label, key, type = 'text') => {
+    const input = el('input', { type, value: S.meta[key] || '', id: 'meta_' + key });
+    input.addEventListener('input', (e) => { S.meta[key] = e.target.value; markDirty(); if (key.includes('Date')) render(); });
+    return el('label', { class: 'field' }, [el('span', { text: label }), input]);
+  };
+  const statusSel = el('select', { id: 'meta_caseStatus' });
+  Object.keys(CASE_STATUS).forEach((k) => statusSel.appendChild(el('option', { value: k, text: CASE_STATUS[k].label })));
+  statusSel.value = S.meta.caseStatus || 'waiting';
+  statusSel.addEventListener('change', (e) => { S.meta.caseStatus = e.target.value; markDirty(); render(); });
+  grid.append(el('label', { class: 'field' }, [el('span', { text: 'Status' }), statusSel]));
+  if (S.meta.caseStatus === 'scheduled') grid.append(f('Scheduled transplant date', 'scheduledDate', 'date'));
+  grid.append(
+    f('Case reference', 'caseId'),
+    f('Transplant coordinator', 'coordinator'),
+    f('Date file opened', 'opened', 'date'),
+    f('Donor name', 'donorName'),
+    f('Donor MRN', 'donorMrn'),
+    f('Donor date of birth', 'donorDob', 'date'),
+    f('Recipient name', 'recipientName'),
+    f('Recipient MRN', 'recipientMrn'),
+    f('Recipient date of birth', 'recipientDob', 'date'),
+    f('Date of transplant', 'transplantDate', 'date'),
+    f('Date of donor nephrectomy', 'nephrectomyDate', 'date'),
+    f('Reminder email (coordinator/patient)', 'email', 'email'),
+  );
+  idCard.appendChild(grid);
+  wrap.appendChild(idCard);
+
+  // progress
+  const d = tally(DATA.donor), r = tally(DATA.recipient);
+  const prog = el('div', { class: 'two-col' });
+  prog.append(progressCard('Living donor work-up', d, 'donor'), progressCard('Recipient work-up', r, 'recipient'));
+  wrap.appendChild(prog);
+
+  // gates
+  const gateCard = card('Mandatory gates', 'The case may not proceed to surgery while any gate is open.');
+  const open = [...d.gatesOpen.map((i) => ({ ...i, who: 'Donor' })), ...r.gatesOpen.map((i) => ({ ...i, who: 'Recipient' }))];
+  if (!open.length) {
+    gateCard.appendChild(el('p', { class: 'ok-note', text: '✓ All mandatory gates are complete.' }));
+  } else {
+    const ul = el('ul', { class: 'gate-list' });
+    open.forEach((g) => ul.appendChild(el('li', {}, [
+      el('span', { class: 'tag ' + (g.who === 'Donor' ? 'tag-d' : 'tag-r'), text: g.who }),
+      el('span', { text: g.text.replace(/^GATE — /, '') }),
+      el('span', { class: 'ref', text: '§' + g.ref }),
+    ])));
+    gateCard.appendChild(ul);
+  }
+  wrap.appendChild(gateCard);
+
+  // upcoming visits
+  const up = card('Follow-up — attention needed', 'Overdue and currently due visits across both schedules.');
+  const rows = [];
+  const collect = (list, anchor, who) => list.forEach((v) => {
+    if (v.section) return;
+    const s = visitStatus(v, anchor);
+    if (s.code === 'overdue' || s.code === 'due') rows.push({ v, s, who });
+  });
+  collect(DATA.recipVisits, S.meta.transplantDate, 'Recipient');
+  collect(DATA.donorVisits, S.meta.nephrectomyDate, 'Donor');
+  rows.sort((a, b) => (a.s.due - b.s.due));
+  if (!rows.length) {
+    up.appendChild(el('p', { class: 'muted-note', text: S.meta.transplantDate || S.meta.nephrectomyDate ? 'Nothing overdue or due today.' : 'Enter the transplant and nephrectomy dates above to activate the follow-up schedules.' }));
+  } else {
+    const t = el('table', { class: 'grid' });
+    t.appendChild(el('thead', {}, el('tr', {}, ['Who', 'Visit', 'Due', 'Status'].map((h) => el('th', { text: h })))));
+    const tb = el('tbody');
+    rows.slice(0, 12).forEach(({ v, s, who }) => tb.appendChild(el('tr', {}, [
+      el('td', {}, el('span', { class: 'tag ' + (who === 'Donor' ? 'tag-d' : 'tag-r'), text: who })),
+      el('td', { text: v.label }),
+      el('td', { text: s.due ? fmt(iso(s.due)) : '' }),
+      el('td', {}, badge(s.code, s.label)),
+    ])));
+    t.appendChild(tb);
+    up.appendChild(t);
+  }
+  wrap.appendChild(up);
+  return wrap;
+}
+
+function progressCard(title, t, tab) {
+  const c = card(title, null);
+  const bar = el('div', { class: 'bar' }, [
+    el('div', { class: 'seg seg-complete', style: `width:${pc(t.complete, t.total)}%` }),
+    el('div', { class: 'seg seg-pending', style: `width:${pc(t.pending, t.total)}%` }),
+  ]);
+  c.appendChild(el('div', { class: 'big-pct', text: t.pct + '%' }));
+  c.appendChild(bar);
+  const stats = el('div', { class: 'stats' });
+  stats.append(
+    stat('Complete', t.complete, 'ok'), stat('Pending', t.pending, 'warn'),
+    stat('Not started', t.todo, 'bad'), stat('N/A', t.na, 'muted'),
+  );
+  c.appendChild(stats);
+  c.appendChild(el('div', { class: 'ready ' + (t.ready ? 'ready-yes' : 'ready-no'),
+    text: t.ready ? 'READY for Transplant Committee' : `${t.outstanding} of ${t.total} outstanding` }));
+  c.appendChild(el('button', { class: 'btn btn-quiet', text: 'Open checklist →', onclick: () => { activeTab = tab; render(); } }));
+  return c;
+}
+const pc = (n, d) => (d ? (n / d) * 100 : 0);
+function stat(label, value, tone) {
+  return el('div', { class: 'stat' }, [el('strong', { class: tone, text: String(value) }), el('span', { text: label })]);
+}
+function badge(code, label) {
+  return el('span', { class: 'badge b-' + code, text: label });
+}
+function card(title, sub) {
+  const c = el('section', { class: 'card' });
+  if (title) c.appendChild(el('h2', { text: title }));
+  if (sub) c.appendChild(el('p', { class: 'sub', text: sub }));
+  return c;
+}
+
+/* ----------------------------------------------------------- checklist */
+function renderChecklist(which) {
+  const list = which === 'donor' ? DATA.donor : DATA.recipient;
+  const t = tally(list);
+  const wrap = el('div', { class: 'stack' });
+
+  const head = el('section', { class: 'card sticky-head' });
+  head.appendChild(el('h2', { text: which === 'donor' ? 'Living kidney donor — evaluation & perioperative checklist' : 'Kidney transplant recipient — evaluation & perioperative checklist' }));
+  head.appendChild(el('p', { class: 'sub', text: which === 'donor' ? 'Program Manual v2.1, Guidelines 1–3' : 'Program Manual v2.1, Guideline 4' }));
+
+  const bar = el('div', { class: 'bar' }, [
+    el('div', { class: 'seg seg-complete', style: `width:${pc(t.complete, t.total)}%` }),
+    el('div', { class: 'seg seg-pending', style: `width:${pc(t.pending, t.total)}%` }),
+  ]);
+  head.appendChild(bar);
+  head.appendChild(el('div', { class: 'inline-stats' }, [
+    el('span', {}, [el('strong', { text: `${t.complete}/${t.total}` }), ' complete']),
+    el('span', {}, [el('strong', { class: 'warn', text: String(t.pending) }), ' pending']),
+    el('span', {}, [el('strong', { class: 'bad', text: String(t.todo) }), ' not started']),
+    el('span', {}, [el('strong', { class: 'muted', text: String(t.na) }), ' N/A']),
+    el('span', { class: 'ready-inline ' + (t.ready ? 'ready-yes' : 'ready-no'), text: t.ready ? 'READY' : 'NOT READY' }),
+  ]));
+
+  const tools = el('div', { class: 'toolbar' });
+  const sInput = el('input', { type: 'search', placeholder: 'Search items…', value: search[which], class: 'search' });
+  sInput.addEventListener('input', (e) => { search[which] = e.target.value.toLowerCase(); renderRows(); });
+  tools.appendChild(sInput);
+  const fgroup = el('div', { class: 'segmented' });
+  [['all', 'All'], ['outstanding', 'Outstanding'], ['gates', 'Gates'], ['complete', 'Complete']].forEach(([k, lbl]) => {
+    const b = el('button', { class: 'seg-btn' + (filters[which] === k ? ' on' : ''), text: lbl });
+    b.addEventListener('click', () => { filters[which] = k; render(); });
+    fgroup.appendChild(b);
+  });
+  tools.appendChild(fgroup);
+  head.appendChild(tools);
+  wrap.appendChild(head);
+
+  const body = el('div', { id: 'rows' });
+  wrap.appendChild(body);
+
+  function renderRows() {
+    body.innerHTML = '';
+    const q = search[which];
+    const mode = filters[which];
+    let currentGroup = null, groupBox = null, shown = 0;
+    list.forEach((it) => {
+      if (it.group) { currentGroup = it.group; groupBox = null; return; }
+      const st = itemState(it.key);
+      const s = statusOf(st);
+      if (mode === 'outstanding' && (s === 'complete' || s === 'na')) return;
+      if (mode === 'complete' && s !== 'complete') return;
+      if (mode === 'gates' && !it.gate) return;
+      if (q && !(it.text.toLowerCase().includes(q) || it.ref.toLowerCase().includes(q) || currentGroup.toLowerCase().includes(q))) return;
+      if (!groupBox) {
+        groupBox = el('section', { class: 'card group' });
+        groupBox.appendChild(el('h3', { class: 'group-title', text: currentGroup }));
+        body.appendChild(groupBox);
+      }
+      groupBox.appendChild(itemRow(it, which));
+      shown += 1;
+    });
+    if (!shown) body.appendChild(el('section', { class: 'card' }, el('p', { class: 'muted-note', text: 'No items match the current filter.' })));
+  }
+  renderRows();
+  return wrap;
+}
+
+function itemRow(it, which) {
+  const st = itemState(it.key);
+  const s = statusOf(st);
+  const row = el('div', { class: 'item s-' + s + (it.gate ? ' is-gate' : '') });
+
+  const main = el('div', { class: 'item-main' });
+  const title = el('div', { class: 'item-title' });
+  if (it.gate) title.appendChild(el('span', { class: 'gate-pill', text: 'GATE' }));
+  title.appendChild(el('span', { text: it.text.replace(/^GATE — /, '') }));
+  main.appendChild(title);
+  main.appendChild(el('div', { class: 'item-meta' }, [
+    el('span', { class: 'ref', text: '§' + it.ref }),
+    badge(s, STATUS_LABEL[s]),
+  ]));
+  row.appendChild(main);
+
+  const ctl = el('div', { class: 'item-ctl' });
+
+  const done = el('button', { class: 'btn btn-tick' + (s === 'complete' ? ' on' : ''), title: 'Mark complete with today\'s date' , text: s === 'complete' ? '✓ Complete' : '✓ Done' });
+  done.addEventListener('click', () => {
+    if (st.completed) { st.completed = ''; } else { st.completed = iso(TODAY()); st.na = false; if (!st.ordered) st.ordered = st.completed; }
+    markDirty(); render();
+  });
+  ctl.appendChild(done);
+
+  const pend = el('button', { class: 'pending-toggle' + (s === 'pending' ? ' on' : ''), title: 'Mark as ordered / pending result', text: s === 'pending' ? '\u23f3 Pending' : 'Mark pending' });
+  pend.addEventListener('click', () => {
+    if (st.ordered && !st.completed) { st.ordered = ''; } else { st.ordered = iso(TODAY()); st.na = false; }
+    markDirty(); render();
+  });
+  ctl.appendChild(pend);
+
+  const dates = el('div', { class: 'dates' });
+  dates.append(
+    dateField('Ordered', st, 'ordered'),
+    dateField('Completed', st, 'completed'),
+  );
+  ctl.appendChild(dates);
+
+  const na = el('label', { class: 'na' }, [
+    (() => {
+      const cb = el('input', { type: 'checkbox' });
+      cb.checked = !!st.na;
+      cb.addEventListener('change', (e) => { st.na = e.target.checked; if (st.na) { st.ordered = ''; st.completed = ''; } markDirty(); render(); });
+      return cb;
+    })(),
+    el('span', { text: 'N/A' }),
+  ]);
+  ctl.appendChild(na);
+  row.appendChild(ctl);
+
+  const extra = el('div', { class: 'item-extra' });
+  const resultField = textField('Lab value / result', st, 'result');
+  const resultInput = resultField.querySelector('input');
+  resultInput.addEventListener('input', () => {
+    if (resultInput.value.trim() && !st.completed) { st.completed = iso(TODAY()); if (!st.ordered) st.ordered = st.completed; }
+    if (!resultInput.value.trim() && st.completed) { st.completed = ''; }
+  });
+  resultInput.addEventListener('blur', () => { markDirty(); render(); });
+  extra.append(
+    resultField,
+    textField(st.na ? 'Reason for N/A (required)' : 'Notes', st, 'notes', st.na && !st.notes),
+  );
+  row.appendChild(extra);
+  return row;
+}
+
+function dateField(label, obj, key) {
+  const input = el('input', { type: 'date', value: obj[key] || '' });
+  input.addEventListener('change', (e) => { obj[key] = e.target.value; markDirty(); render(); });
+  return el('label', { class: 'field small' }, [el('span', { text: label }), input]);
+}
+function textField(label, obj, key, warn) {
+  const input = el('input', { type: 'text', value: obj[key] || '', class: warn ? 'warn-input' : '' });
+  input.addEventListener('input', (e) => { obj[key] = e.target.value; markDirty(); });
+  input.addEventListener('blur', () => { if (warn) render(); });
+  return el('label', { class: 'field small grow' }, [el('span', { text: label }), input]);
+}
+
+/* ---------------------------------------------------------- follow-ups */
+function renderFollowUp(which) {
+  const isR = which === 'rfu';
+  const list = isR ? DATA.recipVisits : DATA.donorVisits;
+  const anchorKey = isR ? 'transplantDate' : 'nephrectomyDate';
+  const cols = isR ? DATA.recipCols : DATA.donorCols;
+  const wrap = el('div', { class: 'stack' });
+
+  const head = el('section', { class: 'card sticky-head' });
+  head.appendChild(el('h2', { text: isR ? 'Recipient follow-up & surveillance' : 'Living donor lifelong follow-up' }));
+  head.appendChild(el('p', { class: 'sub', text: isR ? 'Program Manual v2.1, Guideline 8 §G8.2 and §G8.3' : 'Follow-up is a lifelong obligation of the program, not of the donor · §G8.6' }));
+
+  const anchor = el('input', { type: 'date', value: S.meta[anchorKey] || '' });
+  anchor.addEventListener('change', (e) => { S.meta[anchorKey] = e.target.value; markDirty(); render(); });
+  head.appendChild(el('div', { class: 'toolbar' }, [
+    el('label', { class: 'field' }, [el('span', { text: isR ? 'Date of transplant' : 'Date of donor nephrectomy' }), anchor]),
+  ]));
+
+  const counts = { attended: 0, overdue: 0, due: 0, scheduled: 0 };
+  list.forEach((v) => { if (!v.section) counts[visitStatus(v, S.meta[anchorKey]).code === 'unset' ? 'scheduled' : visitStatus(v, S.meta[anchorKey]).code] += 1; });
+  head.appendChild(el('div', { class: 'inline-stats' }, [
+    el('span', {}, [el('strong', { class: 'ok', text: String(counts.attended) }), ' attended']),
+    el('span', {}, [el('strong', { class: 'bad', text: String(counts.overdue) }), ' overdue']),
+    el('span', {}, [el('strong', { class: 'warn', text: String(counts.due) }), ' due now']),
+    el('span', {}, [el('strong', { class: 'muted', text: String(counts.scheduled) }), ' scheduled']),
+  ]));
+  wrap.appendChild(head);
+
+  let box = null;
+  list.forEach((v) => {
+    if (v.section) {
+      box = el('section', { class: 'card group' });
+      box.appendChild(el('h3', { class: 'group-title', text: v.section }));
+      wrap.appendChild(box);
+      return;
+    }
+    if (!box) { box = el('section', { class: 'card group' }); wrap.appendChild(box); }
+    box.appendChild(visitRow(v, S.meta[anchorKey], cols));
+  });
+  return wrap;
+}
+
+function visitRow(v, anchorISO, cols) {
+  const st = visitState(v.key);
+  const s = visitStatus(v, anchorISO);
+  const row = el('div', { class: 'item v-' + s.code });
+
+  const main = el('div', { class: 'item-main' });
+  main.appendChild(el('div', { class: 'item-title' }, el('span', { text: v.label })));
+  main.appendChild(el('div', { class: 'item-meta' }, [
+    el('span', { class: 'ref', text: 'Day ' + v.offset + ' · ± ' + v.grace + 'd' }),
+    s.due ? el('span', { class: 'due', text: 'Due ' + fmt(iso(s.due)) }) : null,
+    badge(s.code, s.label),
+  ]));
+  main.appendChild(el('div', { class: 'tests', text: v.tests }));
+  row.appendChild(main);
+
+  const ctl = el('div', { class: 'item-ctl' });
+  const done = el('button', { class: 'btn btn-tick' + (st.attended ? ' on' : ''), text: st.attended ? '✓ Attended' : '✓ Attended today' });
+  done.addEventListener('click', () => { st.attended = st.attended ? '' : iso(TODAY()); markDirty(); render(); });
+  ctl.appendChild(done);
+  ctl.appendChild(dateField('Date attended', st, 'attended'));
+  row.appendChild(ctl);
+
+  const extra = el('div', { class: 'item-extra' });
+  cols.forEach((c) => {
+    const input = el('input', { type: 'text', value: st.values[c] || '' });
+    input.addEventListener('input', (e) => { st.values[c] = e.target.value; markDirty(); });
+    extra.appendChild(el('label', { class: 'field small' }, [el('span', { text: c }), input]));
+  });
+  extra.appendChild(textField('Notes', st, 'notes'));
+  row.appendChild(extra);
+  return row;
+}
+
+/* ---------------------------------------------------------------- help */
+function renderHelp() {
+  const wrap = el('div', { class: 'stack' });
+  const c = card('How this tracker works', null);
+  const dl = el('dl', { class: 'help' });
+  const add = (t, d) => { dl.appendChild(el('dt', { text: t })); dl.appendChild(el('dd', { text: d })); };
+  add('Nothing is stored in the browser',
+    'This page holds the case in memory only. Nothing is written to the browser, so a shared computer never retains patient data. Use Save case file to write a .json file to your own drive, and Load case file to reopen it. Save before closing the tab.');
+  add('One case file per pair',
+    'A case file holds the donor checklist, the recipient checklist and both follow-up schedules together. Name it with both medical record numbers.');
+  add('Status is derived, never typed',
+    'Enter a date ordered and the item shows Pending result. Enter a date completed and it shows Complete. The ✓ button fills today\'s date in one click, and clicking it again clears it.');
+  add('Marking an item N/A',
+    'Tick N/A only where an item genuinely does not apply — mammography in a male recipient, for example. Always give the reason; the reason box is highlighted until you do. N/A items are excluded from the completion count.');
+  add('Gates',
+    'Items marked GATE are mandatory. The case may not proceed to surgery while any gate is open. The overview lists every open gate across both checklists.');
+  add('READY is not a decision',
+    'The READY banner means every applicable item is complete. It is not a substitute for the Multidisciplinary Transplant Committee decision or Ethics Committee approval.');
+  add('Follow-up due dates',
+    'Enter the operation date once and every due date is calculated from it. A visit turns Due now inside its permitted window and OVERDUE once it passes that window. Overdue counts appear in the header on every tab.');
+  add('Donor follow-up is lifelong',
+    'The donor schedule runs to year 15 and continues beyond it. The program is responsible for recall, not the donor.');
+  add('Printing and the chart record',
+    'Print produces a clean record of everything entered. The signed paper checklist remains the chart record; this tracker is the working tool.');
+  add('Source',
+    'Every item cites its guideline section — §G2.3 is Guideline 2, subsection 3 of the Kidney Transplant Program Manual v2.1. If the manual is revised, this tracker must be revised to match.');
+  c.appendChild(dl);
+  wrap.appendChild(c);
+
+  const c2 = card('Colour key', null);
+  const key = el('div', { class: 'keygrid' });
+  [['complete', 'Complete / Attended'], ['pending', 'Pending result'], ['todo', 'Not started'],
+   ['due', 'Due now'], ['overdue', 'Overdue'], ['na', 'N/A']].forEach(([k, l]) => {
+    key.appendChild(el('div', { class: 'keyrow' }, [badge(k === 'complete' ? 'complete' : k, l)]));
+  });
+  c2.appendChild(key);
+  wrap.appendChild(c2);
+  return wrap;
+}
+
+/* ------------------------------------------------------------ cloud API */
+function genCaseId() {
+  const d = (S.meta.donorMrn || 'donor').trim().replace(/\s+/g, '');
+  const r = (S.meta.recipientMrn || 'recip').trim().replace(/\s+/g, '');
+  if (S.meta.donorMrn && S.meta.recipientMrn) return `${d}_${r}`;
+  return `case_${Date.now()}`;
+}
+async function gasCall(method, params, body) {
+  if (!cloudReady()) throw new Error('Set the Google Apps Script URL in Settings first.');
+  let url = CFG.gasUrl;
+  if (method === 'GET') {
+    const qs = new URLSearchParams(params || {});
+    url += (url.includes('?') ? '&' : '?') + qs.toString();
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+  const res = await fetch(url, { method: 'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+async function gasListCases(q) {
+  const data = await gasCall('GET', { action: 'list', q: q || '' });
+  return data.cases || [];
+}
+async function gasGetCase(caseId) {
+  const data = await gasCall('GET', { action: 'get', caseId });
+  return data.data;
+}
+async function gasUpsertCase(state) {
+  return gasCall('POST', null, { action: 'upsert', data: state });
+}
+async function gasExportSheet(caseId, rows) {
+  return gasCall('POST', null, { action: 'exportSheet', caseId, rows });
+}
+
+async function cloudSave(silent) {
+  if (!cloudReady()) { if (!silent) toast('Add your Google Apps Script URL in Settings first.', true); return; }
+  if (!S.meta.caseId) S.meta.caseId = genCaseId();
+  syncCloudPill('busy');
+  try {
+    await gasUpsertCase(S);
+    markClean();
+    if (!silent) toast('Saved to Google Sheet.');
+  } catch (e) {
+    syncCloudPill('error');
+    if (!silent) toast('Could not save to the cloud — ' + e.message, true);
+  }
+}
+async function openCase(caseId) {
+  try {
+    const data = await gasGetCase(caseId);
+    S = Object.assign(blankState(), data);
+    S.items = data.items || {};
+    S.visits = data.visits || {};
+    hasCase = true;
+    markClean();
+    activeTab = 'overview';
+    render();
+  } catch (e) {
+    toast('Could not open that case — ' + e.message, true);
+  }
+}
+function buildExportRows() {
+  const rows = [['Sheet', 'Section', '#', 'Ref', 'Item', 'Status', 'Date ordered', 'Date completed', 'Result / value', 'Notes']];
+  const push = (list, sheet) => {
+    let g = '', n = 0;
+    list.forEach((it) => {
+      if (it.group) { g = it.group; return; }
+      n += 1;
+      const st = itemState(it.key);
+      rows.push([sheet, g, n, '§' + it.ref, it.text, STATUS_LABEL[statusOf(st)], st.ordered, st.completed, st.result, st.notes]);
+    });
+  };
+  push(DATA.donor, 'Donor checklist');
+  push(DATA.recipient, 'Recipient checklist');
+  const pushV = (list, anchor, sheet, cols) => {
+    let g = '';
+    list.forEach((v) => {
+      if (v.section) { g = v.section; return; }
+      const st = visitState(v.key), s = visitStatus(v, anchor);
+      rows.push([sheet, g, '', 'Day ' + v.offset, v.label, s.label, s.due ? iso(s.due) : '', st.attended,
+        cols.map((c) => (st.values[c] ? c + '=' + st.values[c] : '')).filter(Boolean).join('; '), st.notes]);
+    });
+  };
+  pushV(DATA.recipVisits, S.meta.transplantDate, 'Recipient follow-up', DATA.recipCols);
+  pushV(DATA.donorVisits, S.meta.nephrectomyDate, 'Donor follow-up', DATA.donorCols);
+  return rows;
+}
+async function exportSheetClick() {
+  if (!cloudReady()) { toast('Add your Google Apps Script URL in Settings first.', true); return; }
+  if (!S.meta.caseId) S.meta.caseId = genCaseId();
+  toast('Exporting to Google Sheet…');
+  try {
+    await cloudSave(true);
+    const rows = buildExportRows();
+    const res = await gasExportSheet(S.meta.caseId, rows);
+    toast('Exported. Open the Google Sheet to view the new tab.');
+    if (res.url) window.open(res.url, '_blank');
+  } catch (e) {
+    toast('Export failed — ' + e.message, true);
+  }
+}
+function outstandingItems() {
+  const out = [];
+  const collect = (list, sheet) => {
+    let g = '';
+    list.forEach((it) => {
+      if (it.group) { g = it.group; return; }
+      const st = itemState(it.key);
+      const s = statusOf(st);
+      if (s === 'pending' || s === 'todo') out.push({ sheet, group: g, text: it.text, ref: it.ref, status: STATUS_LABEL[s], gate: it.gate });
+    });
+  };
+  collect(DATA.donor, 'Donor');
+  collect(DATA.recipient, 'Recipient');
+  return out;
+}
+function reminderBody() {
+  const items = outstandingItems();
+  const name = `${S.meta.recipientName || 'Recipient'} / ${S.meta.donorName || 'Donor'}`;
+  const lines = [`Outstanding items for ${name} (case ${S.meta.caseId || genCaseId()}):`, ''];
+  items.forEach((i) => lines.push(`- [${i.sheet}] ${i.gate ? 'GATE — ' : ''}${i.text} (§${i.ref}) — ${i.status}`));
+  if (!items.length) lines.push('Everything is complete.');
+  return lines.join('\n');
+}
+async function sendReminder() {
+  const items = outstandingItems();
+  if (!items.length) { toast('Nothing outstanding — no reminder needed.'); return; }
+  const to = S.meta.email;
+  if (!to) { toast('Add the recipient/coordinator email on the Overview tab first.', true); return; }
+  if (!CFG.emailjsService || !CFG.emailjsTemplate || !CFG.emailjsPublicKey) {
+    toast('Add your EmailJS Service ID, Template ID and Public Key in Settings first.', true);
+    return;
+  }
+  try {
+    emailjs.init({ publicKey: CFG.emailjsPublicKey });
+    await emailjs.send(CFG.emailjsService, CFG.emailjsTemplate, {
+      to_email: to,
+      patient_name: `${S.meta.recipientName || 'Recipient'} / ${S.meta.donorName || 'Donor'}`,
+      case_id: S.meta.caseId || genCaseId(),
+      outstanding_count: String(items.length),
+      message: reminderBody(),
+    });
+    toast(`Reminder sent to ${to}.`);
+  } catch (e) {
+    toast('Could not send the reminder — ' + (e.text || e.message || e), true);
+  }
+}
+
+/* ------------------------------------------------------- save / load */
+function saveCase() {
+  S.meta.savedAt = new Date().toISOString();
+  const name = (S.meta.caseId || `${S.meta.donorMrn || 'donor'}-${S.meta.recipientMrn || 'recipient'}`).replace(/[^\w.-]+/g, '_');
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, `transplant-case_${name}_${iso(TODAY())}.json`);
+  markClean();
+}
+function loadCase(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const parsed = JSON.parse(fr.result);
+      if (!parsed || typeof parsed !== 'object' || !parsed.meta) throw new Error('Not a tracker case file.');
+      S = Object.assign(blankState(), parsed);
+      S.items = parsed.items || {};
+      S.visits = parsed.visits || {};
+      hasCase = true;
+      markClean();
+      document.querySelectorAll('.modal-back').forEach((n) => n.remove());
+      activeTab = 'overview';
+      render();
+      toast('Case file loaded.');
+    } catch (e) {
+      toast('Could not read that file — ' + e.message, true);
+    }
+  };
+  fr.readAsText(file);
+}
+function exportCsv() {
+  const rows = [['Sheet', 'Section', '#', 'Ref', 'Item', 'Status', 'Date ordered', 'Date completed', 'Result', 'Notes']];
+  const push = (list, sheet) => {
+    let g = '', n = 0;
+    list.forEach((it) => {
+      if (it.group) { g = it.group; return; }
+      n += 1;
+      const st = itemState(it.key);
+      rows.push([sheet, g, n, '§' + it.ref, it.text, STATUS_LABEL[statusOf(st)], st.ordered, st.completed, st.result, st.notes]);
+    });
+  };
+  push(DATA.donor, 'Donor checklist');
+  push(DATA.recipient, 'Recipient checklist');
+  const pushV = (list, anchor, sheet, cols) => {
+    let g = '';
+    list.forEach((v) => {
+      if (v.section) { g = v.section; return; }
+      const st = visitState(v.key), s = visitStatus(v, anchor);
+      rows.push([sheet, g, '', 'Day ' + v.offset, v.label, s.label, s.due ? iso(s.due) : '', st.attended,
+        cols.map((c) => (st.values[c] ? c + '=' + st.values[c] : '')).filter(Boolean).join('; '), st.notes]);
+    });
+  };
+  pushV(DATA.recipVisits, S.meta.transplantDate, 'Recipient follow-up', DATA.recipCols);
+  pushV(DATA.donorVisits, S.meta.nephrectomyDate, 'Donor follow-up', DATA.donorCols);
+  const csv = rows.map((r) => r.map((c) => {
+    const v = c === undefined || c === null ? '' : String(c);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }).join(',')).join('\r\n');
+  downloadBlob(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }),
+    `transplant-case_${(S.meta.caseId || 'export').replace(/[^\w.-]+/g, '_')}_${iso(TODAY())}.csv`);
+}
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = el('a', { href: url, download: filename });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function toast(msg, bad) {
+  const t = el('div', { class: 'toast' + (bad ? ' bad' : ''), text: msg });
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3200);
+}
+
+/* ------------------------------------------------------------- wiring */
+function openSettings() {
+  if (CFG.settingsPassword && !settingsUnlocked) { openSettingsGate(); return; }
+  openSettingsForm();
+}
+function openSettingsGate() {
+  const back = el('div', { class: 'modal-back' });
+  const m = el('div', { class: 'modal' });
+  m.appendChild(el('h2', { text: 'Settings password' }));
+  m.appendChild(el('p', { class: 'sub', text: 'Enter the settings password to continue.' }));
+  const row = el('div', { class: 'toolbar' });
+  const pwInput = el('input', { type: 'password', class: 'search', placeholder: 'Password' });
+  const go = () => {
+    if (pwInput.value === CFG.settingsPassword) { settingsUnlocked = true; back.remove(); openSettingsForm(); }
+    else toast('Incorrect password.', true);
+  };
+  pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  const btn = el('button', { class: 'btn', text: 'Unlock' });
+  btn.addEventListener('click', go);
+  row.append(pwInput, btn);
+  m.appendChild(row);
+  const cancel = el('button', { class: 'btn btn-ghost', text: 'Cancel', style: 'margin-top:14px' });
+  cancel.addEventListener('click', () => back.remove());
+  m.appendChild(cancel);
+  back.appendChild(m);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  document.getElementById('modalRoot').appendChild(back);
+}
+function openSettingsForm() {
+  const back = el('div', { class: 'modal-back' });
+  const m = el('div', { class: 'modal' });
+  m.appendChild(el('h2', { text: 'Settings' }));
+  m.appendChild(el('p', { class: 'sub', text: 'Stored only in this browser. See the Code.gs setup comments for how to get the Apps Script URL and EmailJS IDs.' }));
+  const grid = el('div', { class: 'form-grid' });
+  const tmp = Object.assign({}, CFG);
+  const f = (label, key, ph) => {
+    const input = el('input', { type: 'text', value: tmp[key] || '', placeholder: ph || '' });
+    input.addEventListener('input', (e) => { tmp[key] = e.target.value; });
+    return el('label', { class: 'field' }, [el('span', { text: label }), input]);
+  };
+  grid.append(
+    f('Google Apps Script Web App URL', 'gasUrl', 'https://script.google.com/macros/s/…/exec'),
+    f('EmailJS Service ID', 'emailjsService'),
+    f('EmailJS Template ID', 'emailjsTemplate'),
+    f('EmailJS Public Key', 'emailjsPublicKey'),
+    f('Password to view the donor/recipient list', 'viewPassword', 'Leave blank for no password'),
+    f('Password to open a case (Overview & checklists)', 'casePassword', 'Leave blank for no password'),
+    f('Password to open Settings', 'settingsPassword', 'Leave blank for no password'),
+  );
+  m.appendChild(grid);
+
+  const backupNote = card('Local backup (optional)', 'Save or load a plain .json copy of the currently open case, independent of the cloud.');
+  const bRow = el('div', { class: 'toolbar' });
+  const bSave = el('button', { class: 'btn btn-ghost', text: 'Save case file' });
+  bSave.addEventListener('click', saveCase);
+  const bLoad = el('button', { class: 'btn btn-ghost', text: 'Load case file' });
+  const fi = document.getElementById('fileInput');
+  bLoad.addEventListener('click', () => fi.click());
+  bRow.append(bSave, bLoad);
+  backupNote.appendChild(bRow);
+  m.appendChild(backupNote);
+
+  const actions = el('div', { class: 'modal-actions' });
+  const cancel = el('button', { class: 'btn btn-ghost', text: 'Close' });
+  cancel.addEventListener('click', () => back.remove());
+  const save = el('button', { class: 'btn', text: 'Save settings' });
+  save.addEventListener('click', () => { CFG = tmp; saveCfg(); back.remove(); toast('Settings saved.'); if (activeTab === 'registry') render(); });
+  actions.append(cancel, save);
+  m.appendChild(actions);
+
+  back.appendChild(m);
+  back.addEventListener('click', (e) => { if (e.target === back) back.remove(); });
+  document.getElementById('modalRoot').appendChild(back);
+}
+
+function init() {
+  document.getElementById('btnHome').addEventListener('click', () => { activeTab = 'registry'; registryView = 'home'; registryUnlocked = false; render(); });
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    activeTab = t.dataset.tab;
+    if (activeTab === 'registry') { registryView = 'home'; registryUnlocked = false; }
+    render();
+  }));
+  document.getElementById('btnCloudSave').addEventListener('click', () => cloudSave(false));
+  document.getElementById('btnExportSheet').addEventListener('click', exportSheetClick);
+  document.getElementById('btnRemind').addEventListener('click', sendReminder);
+  document.getElementById('btnCsv').addEventListener('click', exportCsv);
+  document.getElementById('btnPrint').addEventListener('click', () => window.print());
+  document.getElementById('btnSettings').addEventListener('click', openSettings);
+  const fi = document.getElementById('fileInput');
+  fi.addEventListener('change', (e) => { if (e.target.files[0]) loadCase(e.target.files[0]); e.target.value = ''; });
+  window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+  markClean();
+  render();
+}
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
